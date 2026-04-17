@@ -98,7 +98,7 @@ export default function CreateEventPage() {
                 </label>
                 <input
                   id="name" name="name" type="text" required
-                  placeholder="e.g. Bucks Night 2025"
+                  placeholder="e.g. Wednesday Night Futsal"
                   className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                 />
               </div>
