@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 
-const supabaseUrl = 'https://ovhtlnhnzglircqcypst.supabase.co'
-const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im92aHRsbmhuemdsaXJjcWN5cHN0Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NjQxNTQwMSwiZXhwIjoyMDkxOTkxNDAxfQ.nMBKi_0OLbjFqujdDZEHOhVxVBnAJ4mhS1x9ejmEaEA'
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
@@ -18,6 +18,8 @@ export type Event = {
   code: string
   status: string
   organiser_pin: string | null
+  organiser_user_id: string | null
+  leave_restriction: string
 }
 
 export type Participant = {
@@ -26,4 +28,5 @@ export type Participant = {
   name: string
   paid: boolean
   paid_at: string | null
+  user_id: string | null
 }
