@@ -14,6 +14,7 @@ export default function JoinPage() {
 
   const [event, setEvent] = useState<Event | null>(null)
   const [myParticipants, setMyParticipants] = useState<Participant[]>([])
+  const [allParticipants, setAllParticipants] = useState<Pick<Participant, 'id' | 'name'>[]>([])
   const [participantCount, setParticipantCount] = useState(0)
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
@@ -41,14 +42,15 @@ export default function JoinPage() {
 
     setEvent(eventData)
 
-    const [{ count }, { data: myData }] = await Promise.all([
-      supabase.from('participants').select('*', { count: 'exact', head: true }).eq('event_id', eventData.id),
+    const [{ data: allData }, { data: myData }] = await Promise.all([
+      supabase.from('participants').select('id, name').eq('event_id', eventData.id).order('created_at', { ascending: true }),
       user
         ? supabase.from('participants').select('*').eq('event_id', eventData.id).eq('user_id', user.id)
         : Promise.resolve({ data: [] }),
     ])
 
-    setParticipantCount(count ?? 0)
+    setAllParticipants(allData ?? [])
+    setParticipantCount(allData?.length ?? 0)
     setMyParticipants(myData ?? [])
     setLoading(false)
   }, [code, user])
@@ -90,6 +92,7 @@ export default function JoinPage() {
     }
 
     setMyParticipants(prev => [...prev, ...data])
+    setAllParticipants(prev => [...prev, ...data.map(p => ({ id: p.id, name: p.name }))])
     setParticipantCount(prev => prev + data.length)
     setJustJoined(true)
     setJoining(false)
@@ -99,6 +102,7 @@ export default function JoinPage() {
     setLeaving(participant.id)
     await supabase.from('participants').delete().eq('id', participant.id)
     setMyParticipants(prev => prev.filter(p => p.id !== participant.id))
+    setAllParticipants(prev => prev.filter(p => p.id !== participant.id))
     setParticipantCount(prev => prev - 1)
     setConfirmLeave(null)
     setLeaving(null)
@@ -182,6 +186,25 @@ export default function JoinPage() {
               )}
             </div>
           </div>
+
+          {/* Who's joined */}
+          {allParticipants.length > 0 && (
+            <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+              <div className="px-5 py-4 border-b border-gray-100">
+                <h3 className="font-semibold text-gray-900">Who&apos;s joined</h3>
+              </div>
+              <ul className="divide-y divide-gray-100">
+                {allParticipants.map(p => (
+                  <li key={p.id} className="px-5 py-3 flex items-center gap-3">
+                    <div className="w-7 h-7 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-xs font-semibold shrink-0">
+                      {p.name.charAt(0).toUpperCase()}
+                    </div>
+                    <p className="text-sm text-gray-800">{p.name}</p>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
           {/* Already joined — show their spots + payment info */}
           {alreadyJoined && (
