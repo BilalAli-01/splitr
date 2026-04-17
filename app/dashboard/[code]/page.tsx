@@ -1,13 +1,17 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
-import { useParams } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { useAuth } from '@/lib/auth-context'
 import { supabase, Event, Participant } from '@/lib/supabase'
-import { formatCurrency, formatDate } from '@/lib/utils'
+import { formatCurrency, formatDate, LEAVE_RESTRICTION_LABELS } from '@/lib/utils'
 
 export default function DashboardPage() {
   const { code } = useParams<{ code: string }>()
+  const router = useRouter()
+  const { user, loading: authLoading } = useAuth()
+
   const [event, setEvent] = useState<Event | null>(null)
   const [participants, setParticipants] = useState<Participant[]>([])
   const [loading, setLoading] = useState(true)
@@ -16,6 +20,10 @@ export default function DashboardPage() {
   const [removing, setRemoving] = useState<string | null>(null)
   const [confirmRemove, setConfirmRemove] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
+  const [closing, setClosing] = useState(false)
+  const [confirmClose, setConfirmClose] = useState(false)
+
+  // Legacy PIN gate
   const [authed, setAuthed] = useState(false)
   const [pinInput, setPinInput] = useState('')
   const [pinError, setPinError] = useState('')
@@ -28,10 +36,7 @@ export default function DashboardPage() {
 
   const fetchData = useCallback(async () => {
     const { data: eventData, error } = await supabase
-      .from('events')
-      .select('*')
-      .eq('code', code)
-      .single()
+      .from('events').select('*').eq('code', code).single()
 
     if (error || !eventData) {
       setNotFound(true)
@@ -42,37 +47,38 @@ export default function DashboardPage() {
     setEvent(eventData)
 
     const { data: participantData } = await supabase
-      .from('participants')
-      .select('*')
-      .eq('event_id', eventData.id)
+      .from('participants').select('*').eq('event_id', eventData.id)
       .order('paid', { ascending: true })
-      .order('paid_at', { ascending: false, nullsFirst: false })
 
     setParticipants(participantData ?? [])
     setLoading(false)
   }, [code])
 
   useEffect(() => {
-    const alreadyAuthed = localStorage.getItem(`splitr_auth_${code}`) === 'true'
-    if (alreadyAuthed) setAuthed(true)
+    if (authLoading) return
     fetchData()
-  }, [fetchData, code])
+  }, [fetchData, authLoading])
 
-  async function markPaid(participant: Participant) {
-    setMarkingPaid(participant.id)
-    const now = new Date().toISOString()
-    await supabase
-      .from('participants')
-      .update({ paid: true, paid_at: now })
-      .eq('id', participant.id)
+  // Determine access after event and auth are loaded
+  useEffect(() => {
+    if (!event || authLoading) return
 
-    setParticipants((prev) =>
-      prev.map((p) =>
-        p.id === participant.id ? { ...p, paid: true, paid_at: now } : p
-      )
-    )
-    setMarkingPaid(null)
-  }
+    if (event.organiser_user_id) {
+      // Account-gated event
+      if (!user) {
+        router.push(`/auth/login`)
+        return
+      }
+      if (user.id === event.organiser_user_id) {
+        setAuthed(true)
+      }
+      // else: not the organiser — stays false, will show access denied
+    } else {
+      // Legacy event — use PIN gate
+      const saved = localStorage.getItem(`splitr_auth_${code}`) === 'true'
+      if (saved) setAuthed(true)
+    }
+  }, [event, user, authLoading, code, router])
 
   async function submitPin(e: React.FormEvent) {
     e.preventDefault()
@@ -88,27 +94,36 @@ export default function DashboardPage() {
     setPinLoading(false)
   }
 
-  async function removeParticipant(participant: Participant) {
-    setRemoving(participant.id)
-    await supabase.from('participants').delete().eq('id', participant.id)
-    setParticipants((prev) => prev.filter((p) => p.id !== participant.id))
-    setConfirmRemove(null)
-    setRemoving(null)
+  async function markPaid(participant: Participant) {
+    setMarkingPaid(participant.id)
+    const now = new Date().toISOString()
+    await supabase.from('participants').update({ paid: true, paid_at: now }).eq('id', participant.id)
+    setParticipants(prev => prev.map(p => p.id === participant.id ? { ...p, paid: true, paid_at: now } : p))
+    setMarkingPaid(null)
   }
 
   async function markUnpaid(participant: Participant) {
     setMarkingPaid(participant.id)
-    await supabase
-      .from('participants')
-      .update({ paid: false, paid_at: null })
-      .eq('id', participant.id)
-
-    setParticipants((prev) =>
-      prev.map((p) =>
-        p.id === participant.id ? { ...p, paid: false, paid_at: null } : p
-      )
-    )
+    await supabase.from('participants').update({ paid: false, paid_at: null }).eq('id', participant.id)
+    setParticipants(prev => prev.map(p => p.id === participant.id ? { ...p, paid: false, paid_at: null } : p))
     setMarkingPaid(null)
+  }
+
+  async function removeParticipant(participant: Participant) {
+    setRemoving(participant.id)
+    await supabase.from('participants').delete().eq('id', participant.id)
+    setParticipants(prev => prev.filter(p => p.id !== participant.id))
+    setConfirmRemove(null)
+    setRemoving(null)
+  }
+
+  async function closeEvent() {
+    if (!event) return
+    setClosing(true)
+    await supabase.from('events').update({ status: 'closed' }).eq('id', event.id)
+    setEvent(prev => prev ? { ...prev, status: 'closed' } : prev)
+    setConfirmClose(false)
+    setClosing(false)
   }
 
   function copyLink() {
@@ -117,12 +132,8 @@ export default function DashboardPage() {
     setTimeout(() => setCopied(false), 2000)
   }
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-gray-400 text-sm">Loading…</div>
-      </div>
-    )
+  if (authLoading || loading) {
+    return <div className="min-h-screen flex items-center justify-center"><div className="text-gray-400 text-sm">Loading…</div></div>
   }
 
   if (notFound || !event) {
@@ -131,13 +142,26 @@ export default function DashboardPage() {
         <p className="text-4xl mb-4">🤔</p>
         <h2 className="text-xl font-semibold text-gray-900 mb-2">Event not found</h2>
         <p className="text-gray-500 text-sm mb-6">Check the link and try again.</p>
-        <Link href="/" className="text-indigo-600 text-sm font-medium hover:underline">
-          Create a new event
+        <Link href="/" className="text-indigo-600 text-sm font-medium hover:underline">Go home</Link>
+      </div>
+    )
+  }
+
+  // Account-gated: logged in but wrong user
+  if (event.organiser_user_id && user && user.id !== event.organiser_user_id) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center px-4 text-center">
+        <p className="text-4xl mb-4">🔒</p>
+        <h2 className="text-xl font-semibold text-gray-900 mb-2">Access denied</h2>
+        <p className="text-gray-500 text-sm mb-6">You&apos;re not the organiser of this event.</p>
+        <Link href={`/join/${code}`} className="text-indigo-600 text-sm font-medium hover:underline">
+          Join this event instead
         </Link>
       </div>
     )
   }
 
+  // Legacy PIN gate
   if (!authed) {
     return (
       <div className="min-h-screen flex flex-col">
@@ -156,40 +180,26 @@ export default function DashboardPage() {
                   </svg>
                 </div>
                 <h2 className="text-lg font-semibold text-gray-900">Organiser access</h2>
-                <p className="text-sm text-gray-500 mt-1">
-                  Enter your PIN to view <span className="font-medium text-gray-700">{event.name}</span>
-                </p>
+                <p className="text-sm text-gray-500 mt-1">Enter your PIN to view <span className="font-medium text-gray-700">{event.name}</span></p>
               </div>
-
               <form onSubmit={submitPin} className="space-y-4">
-                <div>
-                  <input
-                    type="password"
-                    inputMode="numeric"
-                    value={pinInput}
-                    onChange={(e) => setPinInput(e.target.value)}
-                    placeholder="Enter your PIN"
-                    autoFocus
-                    className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm text-center tracking-widest focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                  />
-                  {pinError && (
-                    <p className="text-xs text-red-500 text-center mt-2">{pinError}</p>
-                  )}
-                </div>
+                <input
+                  type="password" inputMode="numeric"
+                  value={pinInput} onChange={e => setPinInput(e.target.value)}
+                  placeholder="Enter your PIN" autoFocus
+                  className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm text-center tracking-widest focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                />
+                {pinError && <p className="text-xs text-red-500 text-center">{pinError}</p>}
                 <button
-                  type="submit"
-                  disabled={pinLoading || !pinInput}
+                  type="submit" disabled={pinLoading || !pinInput}
                   className="w-full bg-indigo-600 text-white rounded-xl py-3 text-sm font-semibold hover:bg-indigo-700 transition-colors disabled:opacity-50"
                 >
                   {pinLoading ? 'Checking…' : 'Unlock dashboard'}
                 </button>
               </form>
-
               <p className="text-xs text-gray-400 text-center mt-4">
                 Not the organiser?{' '}
-                <Link href={`/join/${code}`} className="text-indigo-500 hover:underline">
-                  Join this event instead
-                </Link>
+                <Link href={`/join/${code}`} className="text-indigo-500 hover:underline">Join instead</Link>
               </p>
             </div>
           </div>
@@ -198,48 +208,58 @@ export default function DashboardPage() {
     )
   }
 
-  const paidCount = participants.filter((p) => p.paid).length
-  const unpaidCount = participants.filter((p) => !p.paid).length
+  const paidCount = participants.filter(p => p.paid).length
+  const unpaidCount = participants.filter(p => !p.paid).length
   const paidTotal = paidCount * event.cost_per_person
   const spotsLeft = event.max_participants - participants.length
+  const isClosed = event.status === 'closed'
 
   return (
     <div className="min-h-screen flex flex-col">
       <header className="bg-white border-b border-gray-200 px-4 py-4 sticky top-0 z-10">
         <div className="max-w-lg mx-auto flex items-center justify-between">
-          <Link href="/" className="text-2xl font-bold text-indigo-600 tracking-tight">
-            Splitr
-          </Link>
-          <span className="text-xs bg-indigo-100 text-indigo-700 font-semibold px-2.5 py-1 rounded-full">
-            Organiser view
-          </span>
+          <Link href="/" className="text-2xl font-bold text-indigo-600 tracking-tight">Splitr</Link>
+          <div className="flex items-center gap-2">
+            {isClosed
+              ? <span className="text-xs bg-gray-100 text-gray-500 font-semibold px-2.5 py-1 rounded-full">Closed</span>
+              : <>
+                  <Link
+                    href={`/dashboard/${code}/edit`}
+                    className="text-xs bg-white border border-gray-300 text-gray-600 font-semibold px-3 py-1.5 rounded-xl hover:bg-gray-50 transition-colors"
+                  >
+                    Edit
+                  </Link>
+                  <span className="text-xs bg-indigo-100 text-indigo-700 font-semibold px-2.5 py-1 rounded-full">Organiser view</span>
+                </>
+            }
+          </div>
         </div>
       </header>
 
       <main className="flex-1 px-4 py-6 space-y-5">
         <div className="max-w-lg mx-auto space-y-5">
+
+          {isClosed && (
+            <div className="bg-gray-50 border border-gray-200 rounded-2xl px-4 py-3 flex items-center gap-3">
+              <span className="text-lg">✅</span>
+              <p className="text-sm text-gray-600">This event is closed. All data is read-only.</p>
+            </div>
+          )}
+
           {/* Event card */}
           <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
             <h2 className="text-xl font-bold text-gray-900">{event.name}</h2>
-            {event.description && (
-              <p className="text-sm text-gray-500 mt-1">{event.description}</p>
-            )}
-            {event.event_date && (
-              <p className="text-sm text-gray-500 mt-1">{formatDate(event.event_date)}</p>
-            )}
+            {event.description && <p className="text-sm text-gray-500 mt-1">{event.description}</p>}
+            {event.event_date && <p className="text-sm text-gray-500 mt-1">{formatDate(event.event_date)}</p>}
 
             <div className="mt-4 grid grid-cols-2 gap-3">
               <div className="bg-indigo-50 rounded-xl p-3">
                 <p className="text-xs text-indigo-500 font-medium">Cost per person</p>
-                <p className="text-xl font-bold text-indigo-700 mt-0.5">
-                  {formatCurrency(event.cost_per_person)}
-                </p>
+                <p className="text-xl font-bold text-indigo-700 mt-0.5">{formatCurrency(event.cost_per_person)}</p>
               </div>
               <div className="bg-gray-50 rounded-xl p-3">
                 <p className="text-xs text-gray-500 font-medium">Total cost</p>
-                <p className="text-xl font-bold text-gray-700 mt-0.5">
-                  {formatCurrency(event.total_cost)}
-                </p>
+                <p className="text-xl font-bold text-gray-700 mt-0.5">{formatCurrency(event.total_cost)}</p>
               </div>
             </div>
 
@@ -270,27 +290,30 @@ export default function DashboardPage() {
           <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
             <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">Your PayID</p>
             <p className="text-base font-semibold text-gray-900">{event.payid}</p>
-            <p className="text-xs text-gray-400 mt-1">Participants will send {formatCurrency(event.cost_per_person)} to this PayID.</p>
+            <p className="text-xs text-gray-400 mt-1">Participants send {formatCurrency(event.cost_per_person)} to this PayID.</p>
+          </div>
+
+          {/* Leave restriction */}
+          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
+            <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">Participants can leave</p>
+            <p className="text-sm font-semibold text-gray-900">{LEAVE_RESTRICTION_LABELS[event.leave_restriction] ?? 'Anytime'}</p>
           </div>
 
           {/* Share link */}
-          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
-            <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">Join link</p>
-            <div className="flex items-center gap-2">
-              <p className="text-sm text-gray-600 flex-1 truncate font-mono bg-gray-50 rounded-lg px-3 py-2">
-                {joinUrl}
-              </p>
-              <button
-                onClick={copyLink}
-                className="shrink-0 bg-indigo-600 text-white text-sm font-medium px-4 py-2 rounded-xl hover:bg-indigo-700 active:bg-indigo-800 transition-colors"
-              >
-                {copied ? 'Copied!' : 'Copy'}
-              </button>
+          {!isClosed && (
+            <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
+              <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">Join link</p>
+              <div className="flex items-center gap-2">
+                <p className="text-sm text-gray-600 flex-1 truncate font-mono bg-gray-50 rounded-lg px-3 py-2">{joinUrl}</p>
+                <button
+                  onClick={copyLink}
+                  className="shrink-0 bg-indigo-600 text-white text-sm font-medium px-4 py-2 rounded-xl hover:bg-indigo-700 transition-colors"
+                >
+                  {copied ? 'Copied!' : 'Copy'}
+                </button>
+              </div>
             </div>
-            <p className="text-xs text-gray-400 mt-2">
-              Share this link with your group so they can join and see payment details.
-            </p>
-          </div>
+          )}
 
           {/* Participants */}
           <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
@@ -308,82 +331,103 @@ export default function DashboardPage() {
               </div>
             ) : (
               <ul className="divide-y divide-gray-100">
-                {participants.map((p) => (
+                {participants.map(p => (
                   <li key={p.id} className="px-5 py-3.5">
                     <div className="flex items-center justify-between gap-3">
                       <div className="flex items-center gap-3 min-w-0">
-                        <div
-                          className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold shrink-0 ${
-                            p.paid
-                              ? 'bg-green-100 text-green-700'
-                              : 'bg-gray-100 text-gray-500'
-                          }`}
-                        >
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold shrink-0 ${p.paid ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
                           {p.name.charAt(0).toUpperCase()}
                         </div>
                         <div className="min-w-0">
                           <p className="text-sm font-medium text-gray-900 truncate">{p.name}</p>
-                          {p.paid && p.paid_at && (
-                            <p className="text-xs text-green-600">
-                              Paid{' '}
-                              {new Date(p.paid_at).toLocaleDateString('en-AU', {
-                                day: 'numeric',
-                                month: 'short',
-                              })}
-                            </p>
-                          )}
-                          {!p.paid && (
-                            <p className="text-xs text-amber-600">Awaiting payment</p>
-                          )}
+                          {p.paid && p.paid_at
+                            ? <p className="text-xs text-green-600">Paid {new Date(p.paid_at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}</p>
+                            : <p className="text-xs text-amber-600">Awaiting payment</p>
+                          }
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-2 shrink-0">
-                        <button
-                          onClick={() => p.paid ? markUnpaid(p) : markPaid(p)}
-                          disabled={markingPaid === p.id || removing === p.id}
-                          className={`text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50 ${
-                            p.paid
-                              ? 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                              : 'bg-green-100 text-green-700 hover:bg-green-200'
-                          }`}
-                        >
-                          {markingPaid === p.id ? '…' : p.paid ? 'Mark unpaid' : 'Mark paid'}
-                        </button>
-
-                        {confirmRemove !== p.id ? (
+                      {!isClosed && (
+                        <div className="flex items-center gap-2 shrink-0">
                           <button
-                            onClick={() => setConfirmRemove(p.id)}
-                            disabled={removing === p.id}
-                            className="text-xs font-semibold px-2.5 py-1.5 rounded-lg bg-red-50 text-red-500 hover:bg-red-100 transition-colors disabled:opacity-50"
-                            title="Remove participant"
+                            onClick={() => p.paid ? markUnpaid(p) : markPaid(p)}
+                            disabled={markingPaid === p.id || removing === p.id}
+                            className={`text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50 ${p.paid ? 'bg-gray-100 text-gray-600 hover:bg-gray-200' : 'bg-green-100 text-green-700 hover:bg-green-200'}`}
                           >
-                            Remove
+                            {markingPaid === p.id ? '…' : p.paid ? 'Mark unpaid' : 'Mark paid'}
                           </button>
-                        ) : (
-                          <div className="flex items-center gap-1">
+
+                          {confirmRemove !== p.id ? (
                             <button
-                              onClick={() => removeParticipant(p)}
+                              onClick={() => setConfirmRemove(p.id)}
                               disabled={removing === p.id}
-                              className="text-xs font-semibold px-2.5 py-1.5 rounded-lg bg-red-500 text-white hover:bg-red-600 transition-colors disabled:opacity-50"
+                              className="text-xs font-semibold px-2.5 py-1.5 rounded-lg bg-red-50 text-red-500 hover:bg-red-100 transition-colors"
                             >
-                              {removing === p.id ? '…' : 'Confirm'}
+                              Remove
                             </button>
-                            <button
-                              onClick={() => setConfirmRemove(null)}
-                              className="text-xs font-semibold px-2.5 py-1.5 rounded-lg bg-gray-100 text-gray-500 hover:bg-gray-200 transition-colors"
-                            >
-                              Cancel
-                            </button>
-                          </div>
-                        )}
-                      </div>
+                          ) : (
+                            <div className="flex items-center gap-1">
+                              <button
+                                onClick={() => removeParticipant(p)}
+                                disabled={removing === p.id}
+                                className="text-xs font-semibold px-2.5 py-1.5 rounded-lg bg-red-500 text-white hover:bg-red-600 transition-colors disabled:opacity-50"
+                              >
+                                {removing === p.id ? '…' : 'Confirm'}
+                              </button>
+                              <button
+                                onClick={() => setConfirmRemove(null)}
+                                className="text-xs font-semibold px-2.5 py-1.5 rounded-lg bg-gray-100 text-gray-500 hover:bg-gray-200 transition-colors"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </li>
                 ))}
               </ul>
             )}
           </div>
+
+          {/* Close event */}
+          {!isClosed && (
+            <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
+              <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">Close event</p>
+              <p className="text-sm text-gray-500 mb-4">
+                Mark this event as complete. It becomes read-only and moves to your closed events.
+              </p>
+              {!confirmClose ? (
+                <button
+                  onClick={() => setConfirmClose(true)}
+                  className="w-full border border-gray-300 text-gray-600 text-sm font-semibold rounded-xl py-3 hover:bg-gray-50 transition-colors"
+                >
+                  Close event
+                </button>
+              ) : (
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-gray-700 text-center">Are you sure? This can&apos;t be undone.</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      onClick={() => setConfirmClose(false)}
+                      className="border border-gray-300 text-gray-600 text-sm font-semibold rounded-xl py-2.5 hover:bg-gray-50 transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={closeEvent}
+                      disabled={closing}
+                      className="bg-gray-800 text-white text-sm font-semibold rounded-xl py-2.5 hover:bg-gray-900 transition-colors disabled:opacity-50"
+                    >
+                      {closing ? 'Closing…' : 'Yes, close it'}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
         </div>
       </main>
     </div>
