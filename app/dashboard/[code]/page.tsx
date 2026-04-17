@@ -24,6 +24,9 @@ export default function DashboardPage() {
   const [confirmClose, setConfirmClose] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [showAddForm, setShowAddForm] = useState(false)
+  const [addName, setAddName] = useState('')
+  const [addingParticipant, setAddingParticipant] = useState(false)
 
   // Legacy PIN gate
   const [authed, setAuthed] = useState(false)
@@ -116,6 +119,24 @@ export default function DashboardPage() {
     setParticipants(prev => prev.filter(p => p.id !== participant.id))
     setConfirmRemove(null)
     setRemoving(null)
+  }
+
+  async function addParticipant(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    if (!event || !addName.trim()) return
+    setAddingParticipant(true)
+    const { data } = await supabase.from('participants').insert({
+      event_id: event.id,
+      name: addName.trim(),
+      paid: false,
+      user_id: null,
+    }).select().single()
+    if (data) {
+      setParticipants(prev => [...prev, data])
+      setAddName('')
+      setShowAddForm(false)
+    }
+    setAddingParticipant(false)
   }
 
   async function closeEvent() {
@@ -330,11 +351,40 @@ export default function DashboardPage() {
 
           {/* Participants */}
           <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-            <div className="px-5 py-4 border-b border-gray-100">
+            <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between gap-3">
               <h3 className="font-semibold text-gray-900">
                 Participants ({participants.length}/{event.max_participants})
               </h3>
+              {!isClosed && spotsLeft > 0 && (
+                <button
+                  onClick={() => { setShowAddForm(v => !v); setAddName('') }}
+                  className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100 transition-colors"
+                >
+                  {showAddForm ? 'Cancel' : '+ Add'}
+                </button>
+              )}
             </div>
+
+            {showAddForm && !isClosed && (
+              <form onSubmit={addParticipant} className="px-5 py-3 border-b border-gray-100 flex items-center gap-2">
+                <input
+                  type="text"
+                  value={addName}
+                  onChange={e => setAddName(e.target.value)}
+                  placeholder="Participant name"
+                  autoFocus
+                  required
+                  className="flex-1 rounded-xl border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                />
+                <button
+                  type="submit"
+                  disabled={addingParticipant || !addName.trim()}
+                  className="shrink-0 bg-indigo-600 text-white text-sm font-semibold px-4 py-2 rounded-xl hover:bg-indigo-700 transition-colors disabled:opacity-50"
+                >
+                  {addingParticipant ? '…' : 'Add'}
+                </button>
+              </form>
+            )}
 
             {participants.length === 0 ? (
               <div className="px-5 py-10 text-center">
