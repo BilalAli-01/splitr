@@ -117,6 +117,8 @@ export default function JoinPage() {
 
   if (!user) return null
 
+  const isAdmin = user.user_metadata?.is_admin === true
+
   if (notFound || !event) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center px-4 text-center">
@@ -140,6 +142,14 @@ export default function JoinPage() {
           <Link href="/" className="text-2xl font-bold text-indigo-600 tracking-tight">Splitr</Link>
           <span className="text-xs text-gray-400">{user.user_metadata?.name}</span>
         </div>
+        {isAdmin && (
+          <div className="max-w-lg mx-auto mt-2 flex items-center gap-1 text-xs">
+            <span className="text-gray-400 mr-1">View as:</span>
+            <Link href="/admin" className="px-2.5 py-1 rounded-full bg-gray-100 text-gray-500 hover:bg-gray-200 transition-colors">Admin</Link>
+            <Link href={`/dashboard/${code}`} className="px-2.5 py-1 rounded-full bg-gray-100 text-gray-500 hover:bg-gray-200 transition-colors">Organiser</Link>
+            <span className="px-2.5 py-1 rounded-full bg-indigo-600 text-white font-semibold">Participant</span>
+          </div>
+        )}
       </header>
 
       <main className="flex-1 px-4 py-8">

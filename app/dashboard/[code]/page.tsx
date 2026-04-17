@@ -84,7 +84,7 @@ export default function DashboardPage() {
     }
   }, [event, user, authLoading, code, router])
 
-  async function submitPin(e: React.FormEvent) {
+  async function submitPin(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     if (!event) return
     setPinError('')
@@ -268,6 +268,14 @@ export default function DashboardPage() {
             }
           </div>
         </div>
+        {isAdmin && (
+          <div className="max-w-lg mx-auto mt-2 flex items-center gap-1 text-xs">
+            <span className="text-gray-400 mr-1">View as:</span>
+            <Link href="/admin" className="px-2.5 py-1 rounded-full bg-gray-100 text-gray-500 hover:bg-gray-200 transition-colors">Admin</Link>
+            <span className="px-2.5 py-1 rounded-full bg-indigo-600 text-white font-semibold">Organiser</span>
+            <Link href={`/join/${code}`} className="px-2.5 py-1 rounded-full bg-gray-100 text-gray-500 hover:bg-gray-200 transition-colors">Participant</Link>
+          </div>
+        )}
       </header>
 
       <main className="flex-1 px-4 py-6 space-y-5">
