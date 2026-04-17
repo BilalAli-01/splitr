@@ -24,3 +24,29 @@ export function formatDate(dateStr: string | null): string {
     day: 'numeric',
   })
 }
+
+export function canLeave(leaveRestriction: string, eventDate: string | null): { allowed: boolean; reason?: string } {
+  if (leaveRestriction === 'never') {
+    return { allowed: false, reason: 'The organiser has disabled leaving this event.' }
+  }
+  if (leaveRestriction === 'none' || !eventDate) {
+    return { allowed: true }
+  }
+
+  const daysMap: Record<string, number> = { '1_day': 1, '3_days': 3, '7_days': 7 }
+  const requiredDays = daysMap[leaveRestriction] ?? 0
+  const daysUntil = (new Date(eventDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+
+  if (daysUntil > requiredDays) return { allowed: true }
+
+  const label = requiredDays === 1 ? '1 day' : `${requiredDays} days`
+  return { allowed: false, reason: `You can only leave up to ${label} before the event.` }
+}
+
+export const LEAVE_RESTRICTION_LABELS: Record<string, string> = {
+  none: 'Anytime',
+  '1_day': 'Up to 1 day before',
+  '3_days': 'Up to 3 days before',
+  '7_days': 'Up to 7 days before',
+  never: 'Never',
+}
