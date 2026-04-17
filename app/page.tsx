@@ -79,6 +79,11 @@ export default function HomePage() {
             <p className="text-xs text-gray-500 mt-0.5">Hey, {name} 👋</p>
           </div>
           <div className="flex items-center gap-3">
+            {user.user_metadata?.is_admin && (
+              <Link href="/admin" className="text-xs bg-red-100 text-red-600 font-semibold px-2.5 py-1 rounded-full hover:bg-red-200 transition-colors">
+                Admin
+              </Link>
+            )}
             <Link
               href="/events/create"
               className="bg-indigo-600 text-white text-sm font-semibold px-4 py-2 rounded-xl hover:bg-indigo-700 transition-colors"

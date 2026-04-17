@@ -81,15 +81,22 @@ function LoginForm() {
               </button>
             </form>
 
-            <p className="text-center text-sm text-gray-500 mt-5">
-              Don&apos;t have an account?{' '}
-              <Link
-                href={`/auth/signup${next !== '/' ? `?next=${encodeURIComponent(next)}` : ''}`}
-                className="text-indigo-600 font-medium hover:underline"
-              >
-                Sign up
-              </Link>
-            </p>
+            <div className="mt-5 space-y-3 text-center">
+              <p className="text-sm text-gray-500">
+                <Link href="/auth/forgot-password" className="text-indigo-600 font-medium hover:underline">
+                  Forgot your password?
+                </Link>
+              </p>
+              <p className="text-sm text-gray-500">
+                Don&apos;t have an account?{' '}
+                <Link
+                  href={`/auth/signup${next !== '/' ? `?next=${encodeURIComponent(next)}` : ''}`}
+                  className="text-indigo-600 font-medium hover:underline"
+                >
+                  Sign up
+                </Link>
+              </p>
+            </div>
           </div>
         </div>
       </main>

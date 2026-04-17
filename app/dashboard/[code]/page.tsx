@@ -22,6 +22,8 @@ export default function DashboardPage() {
   const [copied, setCopied] = useState(false)
   const [closing, setClosing] = useState(false)
   const [confirmClose, setConfirmClose] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
 
   // Legacy PIN gate
   const [authed, setAuthed] = useState(false)
@@ -69,10 +71,9 @@ export default function DashboardPage() {
         router.push(`/auth/login`)
         return
       }
-      if (user.id === event.organiser_user_id) {
+      if (user.id === event.organiser_user_id || user.user_metadata?.is_admin === true) {
         setAuthed(true)
       }
-      // else: not the organiser — stays false, will show access denied
     } else {
       // Legacy event — use PIN gate
       const saved = localStorage.getItem(`splitr_auth_${code}`) === 'true'
@@ -126,6 +127,13 @@ export default function DashboardPage() {
     setClosing(false)
   }
 
+  async function deleteEvent() {
+    if (!event) return
+    setDeleting(true)
+    await supabase.from('events').delete().eq('id', event.id)
+    router.push('/')
+  }
+
   function copyLink() {
     navigator.clipboard.writeText(joinUrl)
     setCopied(true)
@@ -147,8 +155,10 @@ export default function DashboardPage() {
     )
   }
 
-  // Account-gated: logged in but wrong user
-  if (event.organiser_user_id && user && user.id !== event.organiser_user_id) {
+  const isAdmin = user?.user_metadata?.is_admin === true
+
+  // Account-gated: logged in but wrong user (admins bypass this)
+  if (event.organiser_user_id && user && user.id !== event.organiser_user_id && !isAdmin) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center px-4 text-center">
         <p className="text-4xl mb-4">🔒</p>
@@ -218,7 +228,10 @@ export default function DashboardPage() {
     <div className="min-h-screen flex flex-col">
       <header className="bg-white border-b border-gray-200 px-4 py-4 sticky top-0 z-10">
         <div className="max-w-lg mx-auto flex items-center justify-between">
-          <Link href="/" className="text-2xl font-bold text-indigo-600 tracking-tight">Splitr</Link>
+          <div className="flex items-center gap-2">
+            <Link href="/" className="text-2xl font-bold text-indigo-600 tracking-tight">Splitr</Link>
+            {isAdmin && <span className="text-xs bg-red-100 text-red-600 font-semibold px-2 py-0.5 rounded-full">Admin</span>}
+          </div>
           <div className="flex items-center gap-2">
             {isClosed
               ? <span className="text-xs bg-gray-100 text-gray-500 font-semibold px-2.5 py-1 rounded-full">Closed</span>
@@ -427,6 +440,41 @@ export default function DashboardPage() {
               )}
             </div>
           )}
+
+          {/* Delete event */}
+          <div className="bg-white rounded-2xl border border-red-100 shadow-sm p-5">
+            <p className="text-xs font-semibold uppercase tracking-wider text-red-400 mb-2">Danger zone</p>
+            <p className="text-sm text-gray-500 mb-4">
+              Permanently delete this event and all participant data. This cannot be undone.
+            </p>
+            {!confirmDelete ? (
+              <button
+                onClick={() => setConfirmDelete(true)}
+                className="w-full border border-red-200 text-red-500 text-sm font-semibold rounded-xl py-3 hover:bg-red-50 transition-colors"
+              >
+                Delete event
+              </button>
+            ) : (
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-gray-700 text-center">This will delete everything. Are you sure?</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={() => setConfirmDelete(false)}
+                    className="border border-gray-300 text-gray-600 text-sm font-semibold rounded-xl py-2.5 hover:bg-gray-50 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={deleteEvent}
+                    disabled={deleting}
+                    className="bg-red-500 text-white text-sm font-semibold rounded-xl py-2.5 hover:bg-red-600 transition-colors disabled:opacity-50"
+                  >
+                    {deleting ? 'Deleting…' : 'Yes, delete it'}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
 
         </div>
       </main>
