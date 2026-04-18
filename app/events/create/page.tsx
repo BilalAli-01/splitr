@@ -17,6 +17,8 @@ export default function CreateEventPage() {
   const [maxParticipants, setMaxParticipants] = useState('')
   const [enablePayID, setEnablePayID] = useState(true)
   const [enableBankTransfer, setEnableBankTransfer] = useState(false)
+  const [enableWhatsApp, setEnableWhatsApp] = useState(false)
+  const [enableEmail, setEnableEmail] = useState(false)
 
   useEffect(() => {
     if (!authLoading && !user) router.push('/auth/login')
@@ -52,6 +54,8 @@ export default function CreateEventPage() {
     const bsb = enableBankTransfer ? (data.get('bsb') as string) || null : null
     const account_number = enableBankTransfer ? (data.get('account_number') as string) || null : null
     const account_name = enableBankTransfer ? (data.get('account_name') as string) || null : null
+    const notify_whatsapp_number = enableWhatsApp ? (data.get('notify_whatsapp_number') as string) || null : null
+    const notify_email_address = enableEmail ? (data.get('notify_email_address') as string) || null : null
 
     if (max_participants < 1) {
       setError('Max participants must be at least 1.')
@@ -66,6 +70,8 @@ export default function CreateEventPage() {
       total_cost, max_participants, organiser_name, payid, bsb,
       account_number, account_name, code, status: 'active',
       organiser_user_id: user.id, leave_restriction,
+      notify_whatsapp: enableWhatsApp, notify_whatsapp_number,
+      notify_email: enableEmail, notify_email_address,
     })
 
     if (insertError) {
@@ -191,6 +197,48 @@ export default function CreateEventPage() {
                         <input name="bsb" type="text" placeholder="BSB (e.g. 062-000)" className={inputClass} />
                         <input name="account_number" type="text" placeholder="Account number" className={inputClass} />
                       </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="border-t border-gray-100 dark:border-gray-700 pt-5 space-y-4">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Payment notifications</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Let participants notify you when they&apos;ve paid.</p>
+                </div>
+
+                <div className="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden">
+                  <label className="flex items-center gap-3 px-4 py-3 cursor-pointer select-none">
+                    <input type="checkbox" checked={enableWhatsApp} onChange={e => setEnableWhatsApp(e.target.checked)} className="w-4 h-4 rounded accent-indigo-600" />
+                    <div>
+                      <p className="text-sm font-medium text-gray-900 dark:text-white">WhatsApp</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">Participants tap to open WhatsApp with a pre-filled message</p>
+                    </div>
+                  </label>
+                  {enableWhatsApp && (
+                    <div className="px-4 pb-4 border-t border-gray-100 dark:border-gray-700 pt-3">
+                      <input name="notify_whatsapp_number" type="text"
+                        placeholder="e.g. 61412345678 (international format, no +)"
+                        className={inputClass} />
+                      <p className="text-xs text-gray-400 dark:text-gray-500 mt-1.5">Use country code without + — e.g. 61 for Australia</p>
+                    </div>
+                  )}
+                </div>
+
+                <div className="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden">
+                  <label className="flex items-center gap-3 px-4 py-3 cursor-pointer select-none">
+                    <input type="checkbox" checked={enableEmail} onChange={e => setEnableEmail(e.target.checked)} className="w-4 h-4 rounded accent-indigo-600" />
+                    <div>
+                      <p className="text-sm font-medium text-gray-900 dark:text-white">Email</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">Participants tap to open their email app with a pre-filled message</p>
+                    </div>
+                  </label>
+                  {enableEmail && (
+                    <div className="px-4 pb-4 border-t border-gray-100 dark:border-gray-700 pt-3">
+                      <input name="notify_email_address" type="email"
+                        placeholder="your@email.com"
+                        className={inputClass} />
                     </div>
                   )}
                 </div>

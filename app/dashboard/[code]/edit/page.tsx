@@ -23,6 +23,8 @@ export default function EditEventPage() {
   const [maxParticipants, setMaxParticipants] = useState('')
   const [enablePayID, setEnablePayID] = useState(true)
   const [enableBankTransfer, setEnableBankTransfer] = useState(false)
+  const [enableWhatsApp, setEnableWhatsApp] = useState(false)
+  const [enableEmail, setEnableEmail] = useState(false)
 
   const costPerPerson =
     totalCost && maxParticipants && Number(maxParticipants) > 0
@@ -41,6 +43,8 @@ export default function EditEventPage() {
     setMaxParticipants(String(data.max_participants))
     setEnablePayID(!!data.payid)
     setEnableBankTransfer(!!data.bsb)
+    setEnableWhatsApp(!!data.notify_whatsapp)
+    setEnableEmail(!!data.notify_email)
     setParticipantCount(count ?? 0)
     setLoading(false)
   }, [code])
@@ -77,6 +81,8 @@ export default function EditEventPage() {
     const bsb = enableBankTransfer ? (data.get('bsb') as string) || null : null
     const account_number = enableBankTransfer ? (data.get('account_number') as string) || null : null
     const account_name = enableBankTransfer ? (data.get('account_name') as string) || null : null
+    const notify_whatsapp_number = enableWhatsApp ? (data.get('notify_whatsapp_number') as string) || null : null
+    const notify_email_address = enableEmail ? (data.get('notify_email_address') as string) || null : null
 
     if (max_participants < participantCount) {
       setError(`Can't set max below current participant count (${participantCount}).`)
@@ -88,6 +94,8 @@ export default function EditEventPage() {
       name, description: description || null, event_date: event_date || null,
       total_cost, max_participants, organiser_name, payid, bsb,
       account_number, account_name, leave_restriction,
+      notify_whatsapp: enableWhatsApp, notify_whatsapp_number,
+      notify_email: enableEmail, notify_email_address,
     }).eq('id', event.id)
 
     if (updateError) {
@@ -229,6 +237,50 @@ export default function EditEventPage() {
                         <input name="bsb" type="text" placeholder="BSB (e.g. 062-000)" defaultValue={event.bsb ?? ''} className={inputClass} />
                         <input name="account_number" type="text" placeholder="Account number" defaultValue={event.account_number ?? ''} className={inputClass} />
                       </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="border-t border-gray-100 dark:border-gray-700 pt-5 space-y-4">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Payment notifications</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Let participants notify you when they&apos;ve paid.</p>
+                </div>
+
+                <div className="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden">
+                  <label className="flex items-center gap-3 px-4 py-3 cursor-pointer select-none">
+                    <input type="checkbox" checked={enableWhatsApp} onChange={e => setEnableWhatsApp(e.target.checked)} className="w-4 h-4 rounded accent-indigo-600" />
+                    <div>
+                      <p className="text-sm font-medium text-gray-900 dark:text-white">WhatsApp</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">Participants tap to open WhatsApp with a pre-filled message</p>
+                    </div>
+                  </label>
+                  {enableWhatsApp && (
+                    <div className="px-4 pb-4 border-t border-gray-100 dark:border-gray-700 pt-3">
+                      <input name="notify_whatsapp_number" type="text"
+                        placeholder="e.g. 61412345678 (international format, no +)"
+                        defaultValue={event.notify_whatsapp_number ?? ''}
+                        className={inputClass} />
+                      <p className="text-xs text-gray-400 dark:text-gray-500 mt-1.5">Use country code without + — e.g. 61 for Australia</p>
+                    </div>
+                  )}
+                </div>
+
+                <div className="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden">
+                  <label className="flex items-center gap-3 px-4 py-3 cursor-pointer select-none">
+                    <input type="checkbox" checked={enableEmail} onChange={e => setEnableEmail(e.target.checked)} className="w-4 h-4 rounded accent-indigo-600" />
+                    <div>
+                      <p className="text-sm font-medium text-gray-900 dark:text-white">Email</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">Participants tap to open their email app with a pre-filled message</p>
+                    </div>
+                  </label>
+                  {enableEmail && (
+                    <div className="px-4 pb-4 border-t border-gray-100 dark:border-gray-700 pt-3">
+                      <input name="notify_email_address" type="email"
+                        placeholder="your@email.com"
+                        defaultValue={event.notify_email_address ?? ''}
+                        className={inputClass} />
                     </div>
                   )}
                 </div>
