@@ -12,6 +12,9 @@ const geistSans = Geist({
 export const metadata: Metadata = {
   title: "Splitr — Split group event costs easily",
   description: "Create a group event, share the link, and everyone knows exactly how much to send via PayID.",
+  icons: {
+    icon: '/favicon.svg',
+  },
 };
 
 export default function RootLayout({
