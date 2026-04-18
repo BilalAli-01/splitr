@@ -31,6 +31,11 @@ export default function JoinPage() {
   const [confirmLeave, setConfirmLeave] = useState<string | null>(null)
   const [leaving, setLeaving] = useState<string | null>(null)
 
+  // Add more state
+  const [showAddMore, setShowAddMore] = useState(false)
+  const [addMoreName, setAddMoreName] = useState('')
+  const [addingMore, setAddingMore] = useState(false)
+
   const fetchData = useCallback(async () => {
     const { data: eventData, error } = await supabase
       .from('events').select('*').eq('code', code).single()
@@ -98,6 +103,27 @@ export default function JoinPage() {
     setParticipantCount(prev => prev + data.length)
     setJustJoined(true)
     setJoining(false)
+  }
+
+  async function addMore(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    if (!event || !user || !addMoreName.trim()) return
+    setAddingMore(true)
+    const { data } = await supabase.from('participants').insert({
+      event_id: event.id,
+      name: addMoreName.trim(),
+      paid: false,
+      user_id: user.id,
+      added_by_name: user.user_metadata?.name ?? null,
+    }).select().single()
+    if (data) {
+      setMyParticipants(prev => [...prev, data])
+      setAllParticipants(prev => [...prev, { id: data.id, name: data.name }])
+      setParticipantCount(prev => prev + 1)
+      setAddMoreName('')
+      setShowAddMore(false)
+    }
+    setAddingMore(false)
   }
 
   async function leaveEvent(participant: Participant) {
@@ -217,10 +243,35 @@ export default function JoinPage() {
               <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
                 <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
                   <h3 className="font-semibold text-gray-900 dark:text-white">Your spot{myParticipants.length > 1 ? 's' : ''}</h3>
-                  {!isClosed && leaveCheck.allowed && (
-                    <span className="text-xs text-gray-400 dark:text-gray-500">Tap to leave</span>
+                  {!isClosed && participantCount < event.max_participants && (
+                    <button
+                      onClick={() => { setShowAddMore(v => !v); setAddMoreName('') }}
+                      className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/30 transition-colors"
+                    >
+                      {showAddMore ? 'Cancel' : '+ Add'}
+                    </button>
                   )}
                 </div>
+                {showAddMore && !isClosed && (
+                  <form onSubmit={addMore} className="px-5 py-3 border-b border-gray-100 dark:border-gray-700 flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={addMoreName}
+                      onChange={e => setAddMoreName(e.target.value)}
+                      placeholder="Name to add"
+                      autoFocus
+                      required
+                      className="flex-1 rounded-xl border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white dark:bg-gray-700 dark:text-white"
+                    />
+                    <button
+                      type="submit"
+                      disabled={addingMore || !addMoreName.trim()}
+                      className="shrink-0 bg-indigo-600 text-white text-sm font-semibold px-4 py-2 rounded-xl hover:bg-indigo-700 transition-colors disabled:opacity-50"
+                    >
+                      {addingMore ? '…' : 'Add'}
+                    </button>
+                  </form>
+                )}
                 <ul className="divide-y divide-gray-100 dark:divide-gray-700">
                   {myParticipants.map(p => (
                     <li key={p.id} className="px-5 py-3.5 flex items-center justify-between gap-3">
@@ -245,7 +296,7 @@ export default function JoinPage() {
                               onClick={() => setConfirmLeave(p.id)}
                               className="text-xs font-semibold px-2.5 py-1.5 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-500 hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
                             >
-                              Leave
+                              Remove
                             </button>
                           ) : (
                             <div className="flex items-center gap-1">
