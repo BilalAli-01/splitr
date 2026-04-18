@@ -63,7 +63,7 @@ export default function JoinPage() {
     if (!authLoading && !user) router.push(`/auth/login?next=/join/${code}`)
   }, [user, authLoading, router, code])
 
-  async function handleJoin(e: React.FormEvent) {
+  async function handleJoin(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     if (!event || !user) return
     setNameError('')
@@ -317,6 +317,17 @@ export default function JoinPage() {
                         💡 Use &quot;{myParticipants.map(p => p.name).join(' & ')}&quot; as your payment reference.
                       </p>
                     </div>
+
+                    <a
+                      href={`payto://payid/${event.payid}?amount=AUD:${(event.cost_per_person * myParticipants.length).toFixed(2)}&reference=${encodeURIComponent(myParticipants.map(p => p.name).join(' & '))}`}
+                      className="flex items-center justify-center gap-2 w-full bg-green-600 text-white text-sm font-semibold rounded-xl py-3.5 hover:bg-green-700 active:bg-green-800 transition-colors"
+                    >
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                      </svg>
+                      Pay {formatCurrency(event.cost_per_person * myParticipants.length)} now
+                    </a>
+                    <p className="text-xs text-gray-400 text-center -mt-1">Opens your banking app with details pre-filled</p>
                   </div>
                 </div>
               )}
