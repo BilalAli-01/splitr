@@ -109,7 +109,7 @@ export default function JoinPage() {
   }
 
   function copyPayID() {
-    if (!event) return
+    if (!event?.payid) return
     navigator.clipboard.writeText(event.payid)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
@@ -282,7 +282,7 @@ export default function JoinPage() {
                       <p className="font-semibold text-green-900">
                         {justJoined ? "You're in!" : "You've joined"}
                       </p>
-                      <p className="text-xs text-green-700">Send your payment via PayID</p>
+                      <p className="text-xs text-green-700">Send your payment using one of the options below</p>
                     </div>
                   </div>
 
@@ -294,40 +294,66 @@ export default function JoinPage() {
                       </p>
                     </div>
 
-                    <div className="flex items-center justify-between bg-gray-50 rounded-xl px-4 py-3 gap-3">
-                      <div className="min-w-0">
-                        <p className="text-xs text-gray-500">PayID</p>
-                        <p className="text-sm font-semibold text-gray-900 break-all">{event.payid}</p>
-                      </div>
-                      <button
-                        onClick={copyPayID}
-                        className="shrink-0 bg-indigo-600 text-white text-xs font-semibold px-3 py-1.5 rounded-lg hover:bg-indigo-700 transition-colors"
-                      >
-                        {copied ? 'Copied!' : 'Copy'}
-                      </button>
-                    </div>
-
-                    <div className="bg-gray-50 rounded-xl px-4 py-3">
-                      <p className="text-xs text-gray-500">Pay to</p>
-                      <p className="text-sm font-semibold text-gray-900">{event.organiser_name}</p>
-                    </div>
-
                     <div className="bg-amber-50 border border-amber-100 rounded-xl px-4 py-3">
                       <p className="text-xs text-amber-800 font-medium">
                         💡 Use &quot;{myParticipants.map(p => p.name).join(' & ')}&quot; as your payment reference.
                       </p>
                     </div>
 
-                    <a
-                      href={`payto://payid/${event.payid}?amount=AUD:${(event.cost_per_person * myParticipants.length).toFixed(2)}&reference=${encodeURIComponent(myParticipants.map(p => p.name).join(' & '))}`}
-                      className="flex items-center justify-center gap-2 w-full bg-green-600 text-white text-sm font-semibold rounded-xl py-3.5 hover:bg-green-700 active:bg-green-800 transition-colors"
-                    >
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-                      </svg>
-                      Pay {formatCurrency(event.cost_per_person * myParticipants.length)} now
-                    </a>
-                    <p className="text-xs text-gray-400 text-center -mt-1">Opens your banking app with details pre-filled</p>
+                    {/* PayID */}
+                    {event.payid && (
+                      <div className="border border-gray-200 rounded-xl overflow-hidden">
+                        <p className="px-4 pt-3 pb-1 text-xs font-semibold text-gray-500 uppercase tracking-wider">PayID — no fees</p>
+                        <div className="flex items-center justify-between px-4 pb-3 gap-3">
+                          <div className="min-w-0">
+                            <p className="text-sm font-semibold text-gray-900 break-all">{event.payid}</p>
+                            <p className="text-xs text-gray-400">Pay to {event.organiser_name}</p>
+                          </div>
+                          <button
+                            onClick={copyPayID}
+                            className="shrink-0 bg-indigo-600 text-white text-xs font-semibold px-3 py-1.5 rounded-lg hover:bg-indigo-700 transition-colors"
+                          >
+                            {copied ? 'Copied!' : 'Copy'}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Bank Transfer */}
+                    {event.bsb && (
+                      <div className="border border-gray-200 rounded-xl overflow-hidden">
+                        <p className="px-4 pt-3 pb-1 text-xs font-semibold text-gray-500 uppercase tracking-wider">Bank transfer — no fees</p>
+                        <div className="px-4 pb-3 space-y-1.5">
+                          <div className="flex items-center justify-between">
+                            <p className="text-xs text-gray-500">Account name</p>
+                            <p className="text-sm font-semibold text-gray-900">{event.account_name}</p>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <p className="text-xs text-gray-500">BSB</p>
+                            <p className="text-sm font-semibold text-gray-900">{event.bsb}</p>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <p className="text-xs text-gray-500">Account number</p>
+                            <p className="text-sm font-semibold text-gray-900">{event.account_number}</p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Stripe */}
+                    {event.stripe_link && (
+                      <a
+                        href={event.stripe_link}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center justify-center gap-2 w-full bg-indigo-600 text-white text-sm font-semibold rounded-xl py-3.5 hover:bg-indigo-700 transition-colors"
+                      >
+                        Pay by card
+                      </a>
+                    )}
+                    {event.stripe_link && (
+                      <p className="text-xs text-gray-400 text-center -mt-1">Card payments processed by Stripe — fees may apply</p>
+                    )}
                   </div>
                 </div>
               )}

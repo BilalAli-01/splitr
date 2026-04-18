@@ -20,6 +20,9 @@ export default function EditEventPage() {
 
   const [totalCost, setTotalCost] = useState('')
   const [maxParticipants, setMaxParticipants] = useState('')
+  const [enablePayID, setEnablePayID] = useState(true)
+  const [enableBankTransfer, setEnableBankTransfer] = useState(false)
+  const [enableStripe, setEnableStripe] = useState(false)
 
   const costPerPerson =
     totalCost && maxParticipants && Number(maxParticipants) > 0
@@ -44,6 +47,9 @@ export default function EditEventPage() {
     setEvent(data)
     setTotalCost(String(data.total_cost))
     setMaxParticipants(String(data.max_participants))
+    setEnablePayID(!!data.payid)
+    setEnableBankTransfer(!!data.bsb)
+    setEnableStripe(!!data.stripe_link)
     setParticipantCount(count ?? 0)
     setLoading(false)
   }, [code])
@@ -67,8 +73,13 @@ export default function EditEventPage() {
     e.preventDefault()
     if (!event) return
     setError('')
-    setSaving(true)
 
+    if (!enablePayID && !enableBankTransfer && !enableStripe) {
+      setError('Please enable at least one payment method.')
+      return
+    }
+
+    setSaving(true)
     const form = e.currentTarget
     const data = new FormData(form)
 
@@ -78,8 +89,13 @@ export default function EditEventPage() {
     const total_cost = Number(data.get('total_cost'))
     const max_participants = Number(data.get('max_participants'))
     const organiser_name = data.get('organiser_name') as string
-    const payid = data.get('payid') as string
     const leave_restriction = data.get('leave_restriction') as string
+
+    const payid = enablePayID ? (data.get('payid') as string) || null : null
+    const bsb = enableBankTransfer ? (data.get('bsb') as string) || null : null
+    const account_number = enableBankTransfer ? (data.get('account_number') as string) || null : null
+    const account_name = enableBankTransfer ? (data.get('account_name') as string) || null : null
+    const stripe_link = enableStripe ? (data.get('stripe_link') as string) || null : null
 
     if (max_participants < participantCount) {
       setError(`Can't set max below current participant count (${participantCount}).`)
@@ -97,6 +113,10 @@ export default function EditEventPage() {
         max_participants,
         organiser_name,
         payid,
+        bsb,
+        account_number,
+        account_name,
+        stripe_link,
         leave_restriction,
       })
       .eq('id', event.id)
@@ -135,6 +155,8 @@ export default function EditEventPage() {
     )
   }
 
+  const inputClass = 'w-full rounded-xl border border-gray-300 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent'
+
   return (
     <div className="min-h-screen flex flex-col">
       <header className="bg-white border-b border-gray-200 px-4 py-4 sticky top-0 z-10">
@@ -156,7 +178,7 @@ export default function EditEventPage() {
                 <input
                   id="name" name="name" type="text" required
                   defaultValue={event.name}
-                  className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  className={inputClass}
                 />
               </div>
 
@@ -179,7 +201,7 @@ export default function EditEventPage() {
                 <input
                   id="event_date" name="event_date" type="date"
                   defaultValue={event.event_date ?? ''}
-                  className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  className={inputClass}
                 />
               </div>
 
@@ -192,7 +214,7 @@ export default function EditEventPage() {
                     id="total_cost" name="total_cost" type="number" required
                     min="0.01" step="0.01"
                     value={totalCost} onChange={e => setTotalCost(e.target.value)}
-                    className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    className={inputClass}
                   />
                 </div>
                 <div>
@@ -203,7 +225,7 @@ export default function EditEventPage() {
                     id="max_participants" name="max_participants" type="number" required
                     min={participantCount || 1} step="1"
                     value={maxParticipants} onChange={e => setMaxParticipants(e.target.value)}
-                    className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    className={inputClass}
                   />
                   {participantCount > 0 && (
                     <p className="text-xs text-gray-400 mt-1">{participantCount} already joined</p>
@@ -218,8 +240,11 @@ export default function EditEventPage() {
                 </div>
               )}
 
-              <div className="border-t border-gray-100 pt-5 space-y-5">
-                <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Payment details</p>
+              <div className="border-t border-gray-100 pt-5 space-y-4">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Payment methods</p>
+                  <p className="text-xs text-gray-500 mt-1">Choose which payment options to offer participants.</p>
+                </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="organiser_name">
@@ -228,19 +253,95 @@ export default function EditEventPage() {
                   <input
                     id="organiser_name" name="organiser_name" type="text"
                     defaultValue={event.organiser_name}
-                    className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    className={inputClass}
                   />
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="payid">
-                    Your PayID <span className="text-red-500">*</span>
+                {/* PayID */}
+                <div className="border border-gray-200 rounded-xl overflow-hidden">
+                  <label className="flex items-center gap-3 px-4 py-3 cursor-pointer select-none">
+                    <input
+                      type="checkbox" checked={enablePayID}
+                      onChange={e => setEnablePayID(e.target.checked)}
+                      className="w-4 h-4 rounded accent-indigo-600"
+                    />
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">PayID</p>
+                      <p className="text-xs text-gray-500">Instant bank transfer — no fees</p>
+                    </div>
                   </label>
-                  <input
-                    id="payid" name="payid" type="text" required
-                    defaultValue={event.payid}
-                    className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                  />
+                  {enablePayID && (
+                    <div className="px-4 pb-4 border-t border-gray-100 pt-3">
+                      <input
+                        name="payid" type="text"
+                        placeholder="e.g. you@email.com or 0412 345 678"
+                        defaultValue={event.payid ?? ''}
+                        className={inputClass}
+                      />
+                    </div>
+                  )}
+                </div>
+
+                {/* Bank Transfer */}
+                <div className="border border-gray-200 rounded-xl overflow-hidden">
+                  <label className="flex items-center gap-3 px-4 py-3 cursor-pointer select-none">
+                    <input
+                      type="checkbox" checked={enableBankTransfer}
+                      onChange={e => setEnableBankTransfer(e.target.checked)}
+                      className="w-4 h-4 rounded accent-indigo-600"
+                    />
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">Bank transfer</p>
+                      <p className="text-xs text-gray-500">BSB + account number — no fees</p>
+                    </div>
+                  </label>
+                  {enableBankTransfer && (
+                    <div className="px-4 pb-4 border-t border-gray-100 pt-3 space-y-3">
+                      <input
+                        name="account_name" type="text" placeholder="Account name"
+                        defaultValue={event.account_name ?? ''}
+                        className={inputClass}
+                      />
+                      <div className="grid grid-cols-2 gap-3">
+                        <input
+                          name="bsb" type="text" placeholder="BSB (e.g. 062-000)"
+                          defaultValue={event.bsb ?? ''}
+                          className={inputClass}
+                        />
+                        <input
+                          name="account_number" type="text" placeholder="Account number"
+                          defaultValue={event.account_number ?? ''}
+                          className={inputClass}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Stripe */}
+                <div className="border border-gray-200 rounded-xl overflow-hidden">
+                  <label className="flex items-center gap-3 px-4 py-3 cursor-pointer select-none">
+                    <input
+                      type="checkbox" checked={enableStripe}
+                      onChange={e => setEnableStripe(e.target.checked)}
+                      className="w-4 h-4 rounded accent-indigo-600"
+                    />
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">Card payment (Stripe)</p>
+                      <p className="text-xs text-gray-500">Pay by card — Stripe fees apply</p>
+                    </div>
+                  </label>
+                  {enableStripe && (
+                    <div className="px-4 pb-4 border-t border-gray-100 pt-3">
+                      <input
+                        name="stripe_link" type="url"
+                        placeholder="https://buy.stripe.com/..."
+                        defaultValue={event.stripe_link ?? ''}
+                        className={inputClass}
+                      />
+                      <p className="text-xs text-gray-400 mt-1.5">Create a payment link in your Stripe dashboard and paste it here.</p>
+                    </div>
+                  )}
                 </div>
               </div>
 

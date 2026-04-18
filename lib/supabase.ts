@@ -14,7 +14,11 @@ export type Event = {
   max_participants: number
   cost_per_person: number
   organiser_name: string
-  payid: string
+  payid: string | null
+  bsb: string | null
+  account_number: string | null
+  account_name: string | null
+  stripe_link: string | null
   code: string
   status: string
   organiser_pin: string | null

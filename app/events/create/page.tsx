@@ -15,6 +15,10 @@ export default function CreateEventPage() {
   const [totalCost, setTotalCost] = useState('')
   const [maxParticipants, setMaxParticipants] = useState('')
 
+  const [enablePayID, setEnablePayID] = useState(true)
+  const [enableBankTransfer, setEnableBankTransfer] = useState(false)
+  const [enableStripe, setEnableStripe] = useState(false)
+
   useEffect(() => {
     if (!authLoading && !user) router.push('/auth/login')
   }, [user, authLoading, router])
@@ -28,8 +32,13 @@ export default function CreateEventPage() {
     e.preventDefault()
     if (!user) return
     setError('')
-    setLoading(true)
 
+    if (!enablePayID && !enableBankTransfer && !enableStripe) {
+      setError('Please enable at least one payment method.')
+      return
+    }
+
+    setLoading(true)
     const form = e.currentTarget
     const data = new FormData(form)
 
@@ -39,8 +48,13 @@ export default function CreateEventPage() {
     const total_cost = Number(data.get('total_cost'))
     const max_participants = Number(data.get('max_participants'))
     const organiser_name = (data.get('organiser_name') as string).trim() || (user.user_metadata?.name ?? '')
-    const payid = data.get('payid') as string
     const leave_restriction = data.get('leave_restriction') as string
+
+    const payid = enablePayID ? (data.get('payid') as string) || null : null
+    const bsb = enableBankTransfer ? (data.get('bsb') as string) || null : null
+    const account_number = enableBankTransfer ? (data.get('account_number') as string) || null : null
+    const account_name = enableBankTransfer ? (data.get('account_name') as string) || null : null
+    const stripe_link = enableStripe ? (data.get('stripe_link') as string) || null : null
 
     if (max_participants < 1) {
       setError('Max participants must be at least 1.')
@@ -58,6 +72,10 @@ export default function CreateEventPage() {
       max_participants,
       organiser_name,
       payid,
+      bsb,
+      account_number,
+      account_name,
+      stripe_link,
       code,
       status: 'active',
       organiser_user_id: user.id,
@@ -77,6 +95,8 @@ export default function CreateEventPage() {
     return <div className="min-h-screen flex items-center justify-center"><div className="text-gray-400 text-sm">Loading…</div></div>
   }
   if (!user) return null
+
+  const inputClass = 'w-full rounded-xl border border-gray-300 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent'
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -99,7 +119,7 @@ export default function CreateEventPage() {
                 <input
                   id="name" name="name" type="text" required
                   placeholder="e.g. Wednesday Night Futsal"
-                  className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  className={inputClass}
                 />
               </div>
 
@@ -118,10 +138,7 @@ export default function CreateEventPage() {
                 <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="event_date">
                   Event date
                 </label>
-                <input
-                  id="event_date" name="event_date" type="date"
-                  className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                />
+                <input id="event_date" name="event_date" type="date" className={inputClass} />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -133,7 +150,7 @@ export default function CreateEventPage() {
                     id="total_cost" name="total_cost" type="number" required
                     min="0.01" step="0.01" placeholder="0.00"
                     value={totalCost} onChange={e => setTotalCost(e.target.value)}
-                    className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    className={inputClass}
                   />
                 </div>
                 <div>
@@ -144,7 +161,7 @@ export default function CreateEventPage() {
                     id="max_participants" name="max_participants" type="number" required
                     min="1" step="1" placeholder="e.g. 10"
                     value={maxParticipants} onChange={e => setMaxParticipants(e.target.value)}
-                    className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    className={inputClass}
                   />
                 </div>
               </div>
@@ -156,8 +173,11 @@ export default function CreateEventPage() {
                 </div>
               )}
 
-              <div className="border-t border-gray-100 pt-5 space-y-5">
-                <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Payment details</p>
+              <div className="border-t border-gray-100 pt-5 space-y-4">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Payment methods</p>
+                  <p className="text-xs text-gray-500 mt-1">Choose which payment options to offer participants.</p>
+                </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="organiser_name">
@@ -167,21 +187,82 @@ export default function CreateEventPage() {
                     id="organiser_name" name="organiser_name" type="text"
                     placeholder={user.user_metadata?.name ?? 'Your name'}
                     defaultValue={user.user_metadata?.name ?? ''}
-                    className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    className={inputClass}
                   />
                   <p className="text-xs text-gray-400 mt-1.5">Shown to participants so they know who to pay.</p>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="payid">
-                    Your PayID <span className="text-red-500">*</span>
+                {/* PayID */}
+                <div className="border border-gray-200 rounded-xl overflow-hidden">
+                  <label className="flex items-center gap-3 px-4 py-3 cursor-pointer select-none">
+                    <input
+                      type="checkbox" checked={enablePayID}
+                      onChange={e => setEnablePayID(e.target.checked)}
+                      className="w-4 h-4 rounded accent-indigo-600"
+                    />
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">PayID</p>
+                      <p className="text-xs text-gray-500">Instant bank transfer — no fees</p>
+                    </div>
                   </label>
-                  <input
-                    id="payid" name="payid" type="text" required
-                    placeholder="e.g. you@email.com or 0412 345 678"
-                    className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                  />
-                  <p className="text-xs text-gray-400 mt-1.5">Participants will send payment here manually.</p>
+                  {enablePayID && (
+                    <div className="px-4 pb-4 border-t border-gray-100 pt-3">
+                      <input
+                        name="payid" type="text"
+                        placeholder="e.g. you@email.com or 0412 345 678"
+                        className={inputClass}
+                      />
+                    </div>
+                  )}
+                </div>
+
+                {/* Bank Transfer */}
+                <div className="border border-gray-200 rounded-xl overflow-hidden">
+                  <label className="flex items-center gap-3 px-4 py-3 cursor-pointer select-none">
+                    <input
+                      type="checkbox" checked={enableBankTransfer}
+                      onChange={e => setEnableBankTransfer(e.target.checked)}
+                      className="w-4 h-4 rounded accent-indigo-600"
+                    />
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">Bank transfer</p>
+                      <p className="text-xs text-gray-500">BSB + account number — no fees</p>
+                    </div>
+                  </label>
+                  {enableBankTransfer && (
+                    <div className="px-4 pb-4 border-t border-gray-100 pt-3 space-y-3">
+                      <input name="account_name" type="text" placeholder="Account name" className={inputClass} />
+                      <div className="grid grid-cols-2 gap-3">
+                        <input name="bsb" type="text" placeholder="BSB (e.g. 062-000)" className={inputClass} />
+                        <input name="account_number" type="text" placeholder="Account number" className={inputClass} />
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Stripe */}
+                <div className="border border-gray-200 rounded-xl overflow-hidden">
+                  <label className="flex items-center gap-3 px-4 py-3 cursor-pointer select-none">
+                    <input
+                      type="checkbox" checked={enableStripe}
+                      onChange={e => setEnableStripe(e.target.checked)}
+                      className="w-4 h-4 rounded accent-indigo-600"
+                    />
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">Card payment (Stripe)</p>
+                      <p className="text-xs text-gray-500">Pay by card — Stripe fees apply</p>
+                    </div>
+                  </label>
+                  {enableStripe && (
+                    <div className="px-4 pb-4 border-t border-gray-100 pt-3">
+                      <input
+                        name="stripe_link" type="url"
+                        placeholder="https://buy.stripe.com/..."
+                        className={inputClass}
+                      />
+                      <p className="text-xs text-gray-400 mt-1.5">Create a payment link in your Stripe dashboard and paste it here.</p>
+                    </div>
+                  )}
                 </div>
               </div>
 

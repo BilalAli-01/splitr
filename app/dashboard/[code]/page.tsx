@@ -328,11 +328,28 @@ export default function DashboardPage() {
             )}
           </div>
 
-          {/* PayID */}
-          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
-            <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">Your PayID</p>
-            <p className="text-base font-semibold text-gray-900">{event.payid}</p>
-            <p className="text-xs text-gray-400 mt-1">Participants send {formatCurrency(event.cost_per_person)} to this PayID.</p>
+          {/* Payment methods */}
+          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 space-y-4">
+            <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Payment methods</p>
+            {event.payid && (
+              <div>
+                <p className="text-xs text-gray-500 font-medium mb-0.5">PayID</p>
+                <p className="text-sm font-semibold text-gray-900">{event.payid}</p>
+              </div>
+            )}
+            {event.bsb && (
+              <div>
+                <p className="text-xs text-gray-500 font-medium mb-0.5">Bank transfer</p>
+                <p className="text-sm font-semibold text-gray-900">{event.account_name}</p>
+                <p className="text-sm text-gray-700">BSB {event.bsb} · Acct {event.account_number}</p>
+              </div>
+            )}
+            {event.stripe_link && (
+              <div>
+                <p className="text-xs text-gray-500 font-medium mb-0.5">Card payment (Stripe)</p>
+                <a href={event.stripe_link} target="_blank" rel="noopener noreferrer" className="text-sm text-indigo-600 font-medium hover:underline truncate block">{event.stripe_link}</a>
+              </div>
+            )}
           </div>
 
           {/* Leave restriction */}
