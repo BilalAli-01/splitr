@@ -340,20 +340,6 @@ export default function JoinPage() {
                       </div>
                     )}
 
-                    {/* Stripe */}
-                    {event.stripe_link && (
-                      <a
-                        href={event.stripe_link}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center justify-center gap-2 w-full bg-indigo-600 text-white text-sm font-semibold rounded-xl py-3.5 hover:bg-indigo-700 transition-colors"
-                      >
-                        Pay by card
-                      </a>
-                    )}
-                    {event.stripe_link && (
-                      <p className="text-xs text-gray-400 text-center -mt-1">Card payments processed by Stripe — fees may apply</p>
-                    )}
                   </div>
                 </div>
               )}

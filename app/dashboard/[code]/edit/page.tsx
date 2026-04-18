@@ -22,8 +22,6 @@ export default function EditEventPage() {
   const [maxParticipants, setMaxParticipants] = useState('')
   const [enablePayID, setEnablePayID] = useState(true)
   const [enableBankTransfer, setEnableBankTransfer] = useState(false)
-  const [enableStripe, setEnableStripe] = useState(false)
-  const [stripeConnected, setStripeConnected] = useState(false)
 
   const costPerPerson =
     totalCost && maxParticipants && Number(maxParticipants) > 0
@@ -42,7 +40,6 @@ export default function EditEventPage() {
     setMaxParticipants(String(data.max_participants))
     setEnablePayID(!!data.payid)
     setEnableBankTransfer(!!data.bsb)
-    setEnableStripe(!!data.stripe_link)
     setParticipantCount(count ?? 0)
     setLoading(false)
   }, [code])
@@ -54,30 +51,12 @@ export default function EditEventPage() {
     if (event.organiser_user_id && user?.id !== event.organiser_user_id) router.push(`/dashboard/${code}`)
   }, [event, user, authLoading, code, router])
 
-  useEffect(() => {
-    if (!user) return
-    supabase.from('profiles').select('stripe_account_id').eq('id', user.id).maybeSingle()
-      .then(({ data }) => setStripeConnected(!!data?.stripe_account_id))
-  }, [user])
-
-  async function createStripeLink(eventName: string, cpp: number): Promise<string | null> {
-    const { data: { session } } = await supabase.auth.getSession()
-    const res = await fetch('/api/stripe/create-payment-link', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token}` },
-      body: JSON.stringify({ eventName, costPerPerson: cpp }),
-    })
-    if (!res.ok) return null
-    const { url } = await res.json()
-    return url ?? null
-  }
-
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     if (!event) return
     setError('')
 
-    if (!enablePayID && !enableBankTransfer && !enableStripe) {
+    if (!enablePayID && !enableBankTransfer) {
       setError('Please enable at least one payment method.')
       return
     }
@@ -93,7 +72,6 @@ export default function EditEventPage() {
     const max_participants = Number(data.get('max_participants'))
     const organiser_name = data.get('organiser_name') as string
     const leave_restriction = data.get('leave_restriction') as string
-
     const payid = enablePayID ? (data.get('payid') as string) || null : null
     const bsb = enableBankTransfer ? (data.get('bsb') as string) || null : null
     const account_number = enableBankTransfer ? (data.get('account_number') as string) || null : null
@@ -105,17 +83,10 @@ export default function EditEventPage() {
       return
     }
 
-    let stripe_link: string | null = enableStripe ? (event.stripe_link ?? null) : null
-
-    if (enableStripe && stripeConnected) {
-      const cpp = total_cost / max_participants
-      stripe_link = await createStripeLink(name, cpp)
-    }
-
     const { error: updateError } = await supabase.from('events').update({
       name, description: description || null, event_date: event_date || null,
       total_cost, max_participants, organiser_name, payid, bsb,
-      account_number, account_name, stripe_link, leave_restriction,
+      account_number, account_name, leave_restriction,
     }).eq('id', event.id)
 
     if (updateError) {
@@ -223,7 +194,6 @@ export default function EditEventPage() {
                   <input id="organiser_name" name="organiser_name" type="text" defaultValue={event.organiser_name} className={inputClass} />
                 </div>
 
-                {/* PayID */}
                 <div className="border border-gray-200 rounded-xl overflow-hidden">
                   <label className="flex items-center gap-3 px-4 py-3 cursor-pointer select-none">
                     <input type="checkbox" checked={enablePayID} onChange={e => setEnablePayID(e.target.checked)} className="w-4 h-4 rounded accent-indigo-600" />
@@ -240,7 +210,6 @@ export default function EditEventPage() {
                   )}
                 </div>
 
-                {/* Bank Transfer */}
                 <div className="border border-gray-200 rounded-xl overflow-hidden">
                   <label className="flex items-center gap-3 px-4 py-3 cursor-pointer select-none">
                     <input type="checkbox" checked={enableBankTransfer} onChange={e => setEnableBankTransfer(e.target.checked)} className="w-4 h-4 rounded accent-indigo-600" />
@@ -256,29 +225,6 @@ export default function EditEventPage() {
                         <input name="bsb" type="text" placeholder="BSB (e.g. 062-000)" defaultValue={event.bsb ?? ''} className={inputClass} />
                         <input name="account_number" type="text" placeholder="Account number" defaultValue={event.account_number ?? ''} className={inputClass} />
                       </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Stripe */}
-                <div className="border border-gray-200 rounded-xl overflow-hidden">
-                  <label className={`flex items-center gap-3 px-4 py-3 select-none ${stripeConnected ? 'cursor-pointer' : 'cursor-default'}`}>
-                    <input type="checkbox" checked={enableStripe} disabled={!stripeConnected}
-                      onChange={e => setEnableStripe(e.target.checked)} className="w-4 h-4 rounded accent-indigo-600 disabled:opacity-40" />
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <p className="text-sm font-medium text-gray-900">Card payment (Stripe)</p>
-                        {stripeConnected && <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">Connected</span>}
-                      </div>
-                      {stripeConnected
-                        ? <p className="text-xs text-gray-500">Pay by card — Stripe fees apply</p>
-                        : <p className="text-xs text-gray-400">Connect your Stripe account in <Link href="/settings" className="text-indigo-500 hover:underline">Settings</Link> first</p>
-                      }
-                    </div>
-                  </label>
-                  {enableStripe && stripeConnected && (
-                    <div className="px-4 pb-3 pt-2 border-t border-gray-100">
-                      <p className="text-xs text-gray-400">A new payment link will be created automatically when you save.</p>
                     </div>
                   )}
                 </div>

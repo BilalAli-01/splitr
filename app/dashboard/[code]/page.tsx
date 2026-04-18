@@ -344,12 +344,6 @@ export default function DashboardPage() {
                 <p className="text-sm text-gray-700">BSB {event.bsb} · Acct {event.account_number}</p>
               </div>
             )}
-            {event.stripe_link && (
-              <div>
-                <p className="text-xs text-gray-500 font-medium mb-0.5">Card payment (Stripe)</p>
-                <a href={event.stripe_link} target="_blank" rel="noopener noreferrer" className="text-sm text-indigo-600 font-medium hover:underline truncate block">{event.stripe_link}</a>
-              </div>
-            )}
           </div>
 
           {/* Leave restriction */}

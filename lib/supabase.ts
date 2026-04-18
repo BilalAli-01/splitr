@@ -18,18 +18,11 @@ export type Event = {
   bsb: string | null
   account_number: string | null
   account_name: string | null
-  stripe_link: string | null
   code: string
   status: string
   organiser_pin: string | null
   organiser_user_id: string | null
   leave_restriction: string
-}
-
-export type Profile = {
-  id: string
-  stripe_account_id: string | null
-  stripe_connected_at: string | null
 }
 
 export type Participant = {
