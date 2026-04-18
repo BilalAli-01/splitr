@@ -133,6 +133,7 @@ export default function DashboardPage() {
       name: addName.trim(),
       paid: false,
       user_id: null,
+      added_by_name: user?.user_metadata?.name ?? null,
     }).select().single()
     if (data) {
       setParticipants(prev => [...prev, data])
@@ -151,6 +152,7 @@ export default function DashboardPage() {
       name: joinAsName.trim(),
       paid: false,
       user_id: user.id,
+      added_by_name: user.user_metadata?.name ?? null,
     }).select().single()
     if (data) {
       setParticipants(prev => [...prev, data])
@@ -489,6 +491,9 @@ export default function DashboardPage() {
                             ? <p className="text-xs text-green-600">Paid {new Date(p.paid_at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}</p>
                             : <p className="text-xs text-amber-600">Awaiting payment</p>
                           }
+                          {p.added_by_name && (
+                            <p className="text-xs text-gray-400">Added by {p.added_by_name}</p>
+                          )}
                         </div>
                       </div>
 

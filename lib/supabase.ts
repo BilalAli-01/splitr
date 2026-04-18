@@ -32,4 +32,5 @@ export type Participant = {
   paid: boolean
   paid_at: string | null
   user_id: string | null
+  added_by_name: string | null
 }

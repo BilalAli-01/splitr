@@ -63,7 +63,7 @@ export default function JoinPage() {
     if (!authLoading && !user) router.push(`/auth/login?next=/join/${code}`)
   }, [user, authLoading, router, code])
 
-  async function handleJoin(e: React.FormEvent<HTMLFormElement>) {
+  async function handleJoin(e: React.FormEvent<HTMLFormElement>): Promise<void> {
     e.preventDefault()
     if (!event || !user) return
     setNameError('')
@@ -82,7 +82,8 @@ export default function JoinPage() {
 
     setJoining(true)
 
-    const rows = trimmed.map(name => ({ event_id: event.id, name, paid: false, user_id: user.id }))
+    const addedByName = user.user_metadata?.name ?? null
+    const rows = trimmed.map(name => ({ event_id: event.id, name, paid: false, user_id: user.id, added_by_name: addedByName }))
     const { data, error } = await supabase.from('participants').insert(rows).select()
 
     if (error || !data) {
