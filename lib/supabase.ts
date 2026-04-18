@@ -26,6 +26,12 @@ export type Event = {
   leave_restriction: string
 }
 
+export type Profile = {
+  id: string
+  stripe_account_id: string | null
+  stripe_connected_at: string | null
+}
+
 export type Participant = {
   id: string
   event_id: string

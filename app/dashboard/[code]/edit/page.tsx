@@ -23,6 +23,7 @@ export default function EditEventPage() {
   const [enablePayID, setEnablePayID] = useState(true)
   const [enableBankTransfer, setEnableBankTransfer] = useState(false)
   const [enableStripe, setEnableStripe] = useState(false)
+  const [stripeConnected, setStripeConnected] = useState(false)
 
   const costPerPerson =
     totalCost && maxParticipants && Number(maxParticipants) > 0
@@ -30,19 +31,11 @@ export default function EditEventPage() {
       : null
 
   const fetchEvent = useCallback(async () => {
-    const { data, error } = await supabase
-      .from('events').select('*').eq('code', code).single()
+    const { data, error } = await supabase.from('events').select('*').eq('code', code).single()
+    if (error || !data) { setNotFound(true); setLoading(false); return }
 
-    if (error || !data) {
-      setNotFound(true)
-      setLoading(false)
-      return
-    }
-
-    const { count } = await supabase
-      .from('participants')
-      .select('*', { count: 'exact', head: true })
-      .eq('event_id', data.id)
+    const { count } = await supabase.from('participants')
+      .select('*', { count: 'exact', head: true }).eq('event_id', data.id)
 
     setEvent(data)
     setTotalCost(String(data.total_cost))
@@ -54,20 +47,30 @@ export default function EditEventPage() {
     setLoading(false)
   }, [code])
 
-  useEffect(() => {
-    if (!authLoading) fetchEvent()
-  }, [fetchEvent, authLoading])
-
-  useEffect(() => {
-    if (!authLoading && !user) router.push('/auth/login')
-  }, [user, authLoading, router])
-
+  useEffect(() => { if (!authLoading) fetchEvent() }, [fetchEvent, authLoading])
+  useEffect(() => { if (!authLoading && !user) router.push('/auth/login') }, [user, authLoading, router])
   useEffect(() => {
     if (!event || authLoading) return
-    if (event.organiser_user_id && user?.id !== event.organiser_user_id) {
-      router.push(`/dashboard/${code}`)
-    }
+    if (event.organiser_user_id && user?.id !== event.organiser_user_id) router.push(`/dashboard/${code}`)
   }, [event, user, authLoading, code, router])
+
+  useEffect(() => {
+    if (!user) return
+    supabase.from('profiles').select('stripe_account_id').eq('id', user.id).maybeSingle()
+      .then(({ data }) => setStripeConnected(!!data?.stripe_account_id))
+  }, [user])
+
+  async function createStripeLink(eventName: string, cpp: number): Promise<string | null> {
+    const { data: { session } } = await supabase.auth.getSession()
+    const res = await fetch('/api/stripe/create-payment-link', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token}` },
+      body: JSON.stringify({ eventName, costPerPerson: cpp }),
+    })
+    if (!res.ok) return null
+    const { url } = await res.json()
+    return url ?? null
+  }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -95,7 +98,6 @@ export default function EditEventPage() {
     const bsb = enableBankTransfer ? (data.get('bsb') as string) || null : null
     const account_number = enableBankTransfer ? (data.get('account_number') as string) || null : null
     const account_name = enableBankTransfer ? (data.get('account_name') as string) || null : null
-    const stripe_link = enableStripe ? (data.get('stripe_link') as string) || null : null
 
     if (max_participants < participantCount) {
       setError(`Can't set max below current participant count (${participantCount}).`)
@@ -103,23 +105,18 @@ export default function EditEventPage() {
       return
     }
 
-    const { error: updateError } = await supabase
-      .from('events')
-      .update({
-        name,
-        description: description || null,
-        event_date: event_date || null,
-        total_cost,
-        max_participants,
-        organiser_name,
-        payid,
-        bsb,
-        account_number,
-        account_name,
-        stripe_link,
-        leave_restriction,
-      })
-      .eq('id', event.id)
+    let stripe_link: string | null = enableStripe ? (event.stripe_link ?? null) : null
+
+    if (enableStripe && stripeConnected) {
+      const cpp = total_cost / max_participants
+      stripe_link = await createStripeLink(name, cpp)
+    }
+
+    const { error: updateError } = await supabase.from('events').update({
+      name, description: description || null, event_date: event_date || null,
+      total_cost, max_participants, organiser_name, payid, bsb,
+      account_number, account_name, stripe_link, leave_restriction,
+    }).eq('id', event.id)
 
     if (updateError) {
       setError('Something went wrong. Please try again.')
@@ -175,34 +172,18 @@ export default function EditEventPage() {
                 <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="name">
                   Event name <span className="text-red-500">*</span>
                 </label>
-                <input
-                  id="name" name="name" type="text" required
-                  defaultValue={event.name}
-                  className={inputClass}
-                />
+                <input id="name" name="name" type="text" required defaultValue={event.name} className={inputClass} />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="description">
-                  Description
-                </label>
-                <textarea
-                  id="description" name="description" rows={3}
-                  defaultValue={event.description ?? ''}
-                  placeholder="Optional"
-                  className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"
-                />
+                <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="description">Description</label>
+                <textarea id="description" name="description" rows={3} defaultValue={event.description ?? ''} placeholder="Optional"
+                  className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none" />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="event_date">
-                  Event date
-                </label>
-                <input
-                  id="event_date" name="event_date" type="date"
-                  defaultValue={event.event_date ?? ''}
-                  className={inputClass}
-                />
+                <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="event_date">Event date</label>
+                <input id="event_date" name="event_date" type="date" defaultValue={event.event_date ?? ''} className={inputClass} />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -210,26 +191,17 @@ export default function EditEventPage() {
                   <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="total_cost">
                     Total cost ($) <span className="text-red-500">*</span>
                   </label>
-                  <input
-                    id="total_cost" name="total_cost" type="number" required
-                    min="0.01" step="0.01"
-                    value={totalCost} onChange={e => setTotalCost(e.target.value)}
-                    className={inputClass}
-                  />
+                  <input id="total_cost" name="total_cost" type="number" required min="0.01" step="0.01"
+                    value={totalCost} onChange={e => setTotalCost(e.target.value)} className={inputClass} />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="max_participants">
                     No. of people <span className="text-red-500">*</span>
                   </label>
-                  <input
-                    id="max_participants" name="max_participants" type="number" required
+                  <input id="max_participants" name="max_participants" type="number" required
                     min={participantCount || 1} step="1"
-                    value={maxParticipants} onChange={e => setMaxParticipants(e.target.value)}
-                    className={inputClass}
-                  />
-                  {participantCount > 0 && (
-                    <p className="text-xs text-gray-400 mt-1">{participantCount} already joined</p>
-                  )}
+                    value={maxParticipants} onChange={e => setMaxParticipants(e.target.value)} className={inputClass} />
+                  {participantCount > 0 && <p className="text-xs text-gray-400 mt-1">{participantCount} already joined</p>}
                 </div>
               </div>
 
@@ -247,24 +219,14 @@ export default function EditEventPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="organiser_name">
-                    Your display name
-                  </label>
-                  <input
-                    id="organiser_name" name="organiser_name" type="text"
-                    defaultValue={event.organiser_name}
-                    className={inputClass}
-                  />
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="organiser_name">Your display name</label>
+                  <input id="organiser_name" name="organiser_name" type="text" defaultValue={event.organiser_name} className={inputClass} />
                 </div>
 
                 {/* PayID */}
                 <div className="border border-gray-200 rounded-xl overflow-hidden">
                   <label className="flex items-center gap-3 px-4 py-3 cursor-pointer select-none">
-                    <input
-                      type="checkbox" checked={enablePayID}
-                      onChange={e => setEnablePayID(e.target.checked)}
-                      className="w-4 h-4 rounded accent-indigo-600"
-                    />
+                    <input type="checkbox" checked={enablePayID} onChange={e => setEnablePayID(e.target.checked)} className="w-4 h-4 rounded accent-indigo-600" />
                     <div>
                       <p className="text-sm font-medium text-gray-900">PayID</p>
                       <p className="text-xs text-gray-500">Instant bank transfer — no fees</p>
@@ -272,12 +234,8 @@ export default function EditEventPage() {
                   </label>
                   {enablePayID && (
                     <div className="px-4 pb-4 border-t border-gray-100 pt-3">
-                      <input
-                        name="payid" type="text"
-                        placeholder="e.g. you@email.com or 0412 345 678"
-                        defaultValue={event.payid ?? ''}
-                        className={inputClass}
-                      />
+                      <input name="payid" type="text" placeholder="e.g. you@email.com or 0412 345 678"
+                        defaultValue={event.payid ?? ''} className={inputClass} />
                     </div>
                   )}
                 </div>
@@ -285,11 +243,7 @@ export default function EditEventPage() {
                 {/* Bank Transfer */}
                 <div className="border border-gray-200 rounded-xl overflow-hidden">
                   <label className="flex items-center gap-3 px-4 py-3 cursor-pointer select-none">
-                    <input
-                      type="checkbox" checked={enableBankTransfer}
-                      onChange={e => setEnableBankTransfer(e.target.checked)}
-                      className="w-4 h-4 rounded accent-indigo-600"
-                    />
+                    <input type="checkbox" checked={enableBankTransfer} onChange={e => setEnableBankTransfer(e.target.checked)} className="w-4 h-4 rounded accent-indigo-600" />
                     <div>
                       <p className="text-sm font-medium text-gray-900">Bank transfer</p>
                       <p className="text-xs text-gray-500">BSB + account number — no fees</p>
@@ -297,22 +251,10 @@ export default function EditEventPage() {
                   </label>
                   {enableBankTransfer && (
                     <div className="px-4 pb-4 border-t border-gray-100 pt-3 space-y-3">
-                      <input
-                        name="account_name" type="text" placeholder="Account name"
-                        defaultValue={event.account_name ?? ''}
-                        className={inputClass}
-                      />
+                      <input name="account_name" type="text" placeholder="Account name" defaultValue={event.account_name ?? ''} className={inputClass} />
                       <div className="grid grid-cols-2 gap-3">
-                        <input
-                          name="bsb" type="text" placeholder="BSB (e.g. 062-000)"
-                          defaultValue={event.bsb ?? ''}
-                          className={inputClass}
-                        />
-                        <input
-                          name="account_number" type="text" placeholder="Account number"
-                          defaultValue={event.account_number ?? ''}
-                          className={inputClass}
-                        />
+                        <input name="bsb" type="text" placeholder="BSB (e.g. 062-000)" defaultValue={event.bsb ?? ''} className={inputClass} />
+                        <input name="account_number" type="text" placeholder="Account number" defaultValue={event.account_number ?? ''} className={inputClass} />
                       </div>
                     </div>
                   )}
@@ -320,40 +262,32 @@ export default function EditEventPage() {
 
                 {/* Stripe */}
                 <div className="border border-gray-200 rounded-xl overflow-hidden">
-                  <label className="flex items-center gap-3 px-4 py-3 cursor-pointer select-none">
-                    <input
-                      type="checkbox" checked={enableStripe}
-                      onChange={e => setEnableStripe(e.target.checked)}
-                      className="w-4 h-4 rounded accent-indigo-600"
-                    />
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">Card payment (Stripe)</p>
-                      <p className="text-xs text-gray-500">Pay by card — Stripe fees apply</p>
+                  <label className={`flex items-center gap-3 px-4 py-3 select-none ${stripeConnected ? 'cursor-pointer' : 'cursor-default'}`}>
+                    <input type="checkbox" checked={enableStripe} disabled={!stripeConnected}
+                      onChange={e => setEnableStripe(e.target.checked)} className="w-4 h-4 rounded accent-indigo-600 disabled:opacity-40" />
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-medium text-gray-900">Card payment (Stripe)</p>
+                        {stripeConnected && <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">Connected</span>}
+                      </div>
+                      {stripeConnected
+                        ? <p className="text-xs text-gray-500">Pay by card — Stripe fees apply</p>
+                        : <p className="text-xs text-gray-400">Connect your Stripe account in <Link href="/settings" className="text-indigo-500 hover:underline">Settings</Link> first</p>
+                      }
                     </div>
                   </label>
-                  {enableStripe && (
-                    <div className="px-4 pb-4 border-t border-gray-100 pt-3">
-                      <input
-                        name="stripe_link" type="url"
-                        placeholder="https://buy.stripe.com/..."
-                        defaultValue={event.stripe_link ?? ''}
-                        className={inputClass}
-                      />
-                      <p className="text-xs text-gray-400 mt-1.5">Create a payment link in your Stripe dashboard and paste it here.</p>
+                  {enableStripe && stripeConnected && (
+                    <div className="px-4 pb-3 pt-2 border-t border-gray-100">
+                      <p className="text-xs text-gray-400">A new payment link will be created automatically when you save.</p>
                     </div>
                   )}
                 </div>
               </div>
 
               <div className="border-t border-gray-100 pt-5">
-                <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="leave_restriction">
-                  Allow participants to leave
-                </label>
-                <select
-                  id="leave_restriction" name="leave_restriction"
-                  defaultValue={event.leave_restriction}
-                  className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white"
-                >
+                <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="leave_restriction">Allow participants to leave</label>
+                <select id="leave_restriction" name="leave_restriction" defaultValue={event.leave_restriction}
+                  className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white">
                   <option value="none">Anytime (no restriction)</option>
                   <option value="1_day">Up to 1 day before the event</option>
                   <option value="3_days">Up to 3 days before the event</option>
@@ -362,21 +296,15 @@ export default function EditEventPage() {
                 </select>
               </div>
 
-              {error && (
-                <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-red-600">{error}</div>
-              )}
+              {error && <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-red-600">{error}</div>}
 
               <div className="flex gap-3 pt-2">
-                <Link
-                  href={`/dashboard/${code}`}
-                  className="flex-1 text-center border border-gray-300 text-gray-600 text-sm font-semibold rounded-xl py-3 hover:bg-gray-50 transition-colors"
-                >
+                <Link href={`/dashboard/${code}`}
+                  className="flex-1 text-center border border-gray-300 text-gray-600 text-sm font-semibold rounded-xl py-3 hover:bg-gray-50 transition-colors">
                   Cancel
                 </Link>
-                <button
-                  type="submit" disabled={saving}
-                  className="flex-1 bg-indigo-600 text-white rounded-xl py-3 text-sm font-semibold hover:bg-indigo-700 transition-colors disabled:opacity-50"
-                >
+                <button type="submit" disabled={saving}
+                  className="flex-1 bg-indigo-600 text-white rounded-xl py-3 text-sm font-semibold hover:bg-indigo-700 transition-colors disabled:opacity-50">
                   {saving ? 'Saving…' : 'Save changes'}
                 </button>
               </div>
