@@ -149,7 +149,7 @@ export default function JoinPage() {
 
   if (!user) return null
 
-  const isAdmin = user.user_metadata?.is_admin === true
+  const isAdmin = user.app_metadata?.is_admin === true
 
   if (notFound || !event) {
     return (

@@ -80,7 +80,7 @@ export default function HomePage() {
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Hey, {name} 👋</p>
           </div>
           <div className="flex items-center gap-3">
-            {user.user_metadata?.is_admin && (
+            {user.app_metadata?.is_admin && (
               <Link href="/admin" className="text-xs bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 font-semibold px-2.5 py-1 rounded-full hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors">
                 Admin
               </Link>

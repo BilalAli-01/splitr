@@ -82,7 +82,7 @@ export default function DashboardPage() {
         router.push(`/auth/login`)
         return
       }
-      if (user.id === event.organiser_user_id || user.user_metadata?.is_admin === true) {
+      if (user.id === event.organiser_user_id || user.app_metadata?.is_admin === true) {
         setAuthed(true)
       }
     } else {
@@ -217,7 +217,7 @@ export default function DashboardPage() {
     )
   }
 
-  const isAdmin = user?.user_metadata?.is_admin === true
+  const isAdmin = user?.app_metadata?.is_admin === true
 
   // Account-gated: logged in but wrong user (admins bypass this)
   if (event.organiser_user_id && user && user.id !== event.organiser_user_id && !isAdmin) {

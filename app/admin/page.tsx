@@ -15,7 +15,7 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
 
-  const isAdmin = user?.user_metadata?.is_admin === true
+  const isAdmin = user?.app_metadata?.is_admin === true
 
   useEffect(() => {
     if (authLoading) return
