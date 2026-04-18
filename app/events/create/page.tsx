@@ -101,8 +101,7 @@ export default function CreateEventPage() {
     })
 
     if (insertError) {
-      console.error('Insert error:', insertError)
-      setError(`Error: ${insertError.message}`)
+      setError('Something went wrong. Please try again.')
       setLoading(false)
       return
     }
