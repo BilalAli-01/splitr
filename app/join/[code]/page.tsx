@@ -199,16 +199,30 @@ export default function JoinPage() {
             {event.description && <p className="text-sm text-gray-500 dark:text-gray-400 mt-1.5">{event.description}</p>}
             {event.event_date && <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{formatDate(event.event_date)}</p>}
 
-            <div className="mt-4 bg-indigo-50 dark:bg-indigo-900/20 rounded-xl p-4 flex items-center justify-between">
-              <div>
-                <p className="text-xs text-indigo-500 dark:text-indigo-400 font-medium">Your share</p>
-                <p className="text-3xl font-bold text-indigo-700 dark:text-indigo-300 mt-0.5">{formatCurrency(event.cost_per_person)}</p>
+            {event.pricing_mode === 'flexible' && event.cost_per_person === 0 ? (
+              <div className="mt-4 bg-purple-50 dark:bg-purple-900/20 rounded-xl p-4 flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-purple-500 dark:text-purple-400 font-medium">Your share</p>
+                  <p className="text-base font-bold text-purple-700 dark:text-purple-300 mt-0.5">To be confirmed</p>
+                  <p className="text-xs text-purple-500 dark:text-purple-400 mt-0.5">The organiser will set this after the event</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-xs text-purple-400 dark:text-purple-500">Organised by</p>
+                  <p className="text-sm font-semibold text-purple-700 dark:text-purple-300">{event.organiser_name}</p>
+                </div>
               </div>
-              <div className="text-right">
-                <p className="text-xs text-indigo-400 dark:text-indigo-500">Organised by</p>
-                <p className="text-sm font-semibold text-indigo-700 dark:text-indigo-300">{event.organiser_name}</p>
+            ) : (
+              <div className="mt-4 bg-indigo-50 dark:bg-indigo-900/20 rounded-xl p-4 flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-indigo-500 dark:text-indigo-400 font-medium">Your share</p>
+                  <p className="text-3xl font-bold text-indigo-700 dark:text-indigo-300 mt-0.5">{formatCurrency(event.cost_per_person)}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-xs text-indigo-400 dark:text-indigo-500">Organised by</p>
+                  <p className="text-sm font-semibold text-indigo-700 dark:text-indigo-300">{event.organiser_name}</p>
+                </div>
               </div>
-            </div>
+            )}
 
             <div className="mt-3 flex items-center justify-between text-xs text-gray-400 dark:text-gray-500">
               <span>{participantCount} of {event.max_participants} joined</span>
@@ -325,8 +339,21 @@ export default function JoinPage() {
                 )}
               </div>
 
+              {/* Flexible pending notice */}
+              {!isClosed && event.pricing_mode === 'flexible' && event.cost_per_person === 0 && (
+                <div className="bg-purple-50 dark:bg-purple-900/20 rounded-2xl border border-purple-100 dark:border-purple-800 p-5 flex items-start gap-3">
+                  <span className="text-xl shrink-0">⏳</span>
+                  <div>
+                    <p className="font-semibold text-purple-900 dark:text-purple-300 text-sm">You&apos;re in — cost coming soon</p>
+                    <p className="text-xs text-purple-700 dark:text-purple-400 mt-1">
+                      {event.organiser_name} will confirm the payment amount after the event. Check back here to pay.
+                    </p>
+                  </div>
+                </div>
+              )}
+
               {/* Payment details */}
-              {!isClosed && (
+              {!isClosed && !(event.pricing_mode === 'flexible' && event.cost_per_person === 0) && (
                 <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
                   <div className="bg-green-50 dark:bg-green-900/20 border-b border-green-100 dark:border-green-800 px-5 py-4 flex items-center gap-3">
                     <div className="w-9 h-9 rounded-full bg-green-500 flex items-center justify-center shrink-0">

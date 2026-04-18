@@ -32,6 +32,10 @@ export default function DashboardPage() {
   const [joinAsName, setJoinAsName] = useState('')
   const [joiningAs, setJoiningAs] = useState(false)
 
+  // Flexible cost confirmation
+  const [confirmCostAmount, setConfirmCostAmount] = useState('')
+  const [confirmingCost, setConfirmingCost] = useState(false)
+
   // Legacy PIN gate
   const [authed, setAuthed] = useState(false)
   const [pinInput, setPinInput] = useState('')
@@ -170,6 +174,19 @@ export default function DashboardPage() {
     setEvent(prev => prev ? { ...prev, status: 'closed' } : prev)
     setConfirmClose(false)
     setClosing(false)
+  }
+
+  async function confirmFlexibleCost(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    if (!event) return
+    const amount = Number(confirmCostAmount)
+    if (!amount || amount <= 0) return
+    setConfirmingCost(true)
+    const total = amount * participants.length
+    await supabase.from('events').update({ cost_per_person: amount, total_cost: total }).eq('id', event.id)
+    setEvent(prev => prev ? { ...prev, cost_per_person: amount, total_cost: total } : prev)
+    setConfirmCostAmount('')
+    setConfirmingCost(false)
   }
 
   async function deleteEvent() {
@@ -317,18 +334,35 @@ export default function DashboardPage() {
 
           {/* Event card */}
           <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm p-5">
-            <h2 className="text-xl font-bold text-gray-900 dark:text-white">{event.name}</h2>
+            <div className="flex items-start justify-between gap-2">
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white">{event.name}</h2>
+              {event.pricing_mode && event.pricing_mode !== 'split' && (
+                <span className={`shrink-0 text-xs font-semibold px-2.5 py-1 rounded-full ${
+                  event.pricing_mode === 'flexible'
+                    ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300'
+                    : 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
+                }`}>
+                  {event.pricing_mode === 'flexible' ? 'Flexible' : 'Fixed'}
+                </span>
+              )}
+            </div>
             {event.description && <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{event.description}</p>}
             {event.event_date && <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{formatDate(event.event_date)}</p>}
 
             <div className="mt-4 grid grid-cols-2 gap-3">
               <div className="bg-indigo-50 dark:bg-indigo-900/20 rounded-xl p-3">
                 <p className="text-xs text-indigo-500 dark:text-indigo-400 font-medium">Cost per person</p>
-                <p className="text-xl font-bold text-indigo-700 dark:text-indigo-300 mt-0.5">{formatCurrency(event.cost_per_person)}</p>
+                {event.pricing_mode === 'flexible' && event.cost_per_person === 0
+                  ? <p className="text-sm font-bold text-purple-600 dark:text-purple-400 mt-0.5">To be confirmed</p>
+                  : <p className="text-xl font-bold text-indigo-700 dark:text-indigo-300 mt-0.5">{formatCurrency(event.cost_per_person)}</p>
+                }
               </div>
               <div className="bg-gray-50 dark:bg-gray-700 rounded-xl p-3">
                 <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">Total cost</p>
-                <p className="text-xl font-bold text-gray-700 dark:text-gray-200 mt-0.5">{formatCurrency(event.total_cost)}</p>
+                {event.pricing_mode === 'flexible' && event.total_cost === 0
+                  ? <p className="text-sm font-bold text-gray-500 dark:text-gray-400 mt-0.5">TBC</p>
+                  : <p className="text-xl font-bold text-gray-700 dark:text-gray-200 mt-0.5">{formatCurrency(event.total_cost)}</p>
+                }
               </div>
             </div>
 
@@ -543,6 +577,42 @@ export default function DashboardPage() {
               </ul>
             )}
           </div>
+
+          {/* Confirm cost — Flexible mode only */}
+          {!isClosed && event.pricing_mode === 'flexible' && event.cost_per_person === 0 && (
+            <div className="bg-white dark:bg-gray-800 rounded-2xl border border-purple-200 dark:border-purple-800 shadow-sm p-5">
+              <p className="text-xs font-semibold uppercase tracking-wider text-purple-400 mb-1">Confirm cost</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                Once you know the final split, set the per-person amount. Participants will see this immediately.
+              </p>
+              <form onSubmit={confirmFlexibleCost} className="flex items-center gap-2">
+                <div className="relative flex-1">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
+                  <input
+                    type="number"
+                    min="0.01"
+                    step="0.01"
+                    value={confirmCostAmount}
+                    onChange={e => setConfirmCostAmount(e.target.value)}
+                    placeholder="0.00"
+                    className="w-full pl-7 pr-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-600 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 dark:text-white"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={confirmingCost || !confirmCostAmount || Number(confirmCostAmount) <= 0}
+                  className="shrink-0 bg-purple-600 text-white text-sm font-semibold px-4 py-2.5 rounded-xl hover:bg-purple-700 transition-colors disabled:opacity-50"
+                >
+                  {confirmingCost ? 'Saving…' : 'Confirm'}
+                </button>
+              </form>
+              {participants.length > 0 && confirmCostAmount && Number(confirmCostAmount) > 0 && (
+                <p className="text-xs text-gray-400 dark:text-gray-500 mt-2">
+                  Total: {formatCurrency(Number(confirmCostAmount) * participants.length)} across {participants.length} participant{participants.length !== 1 ? 's' : ''}
+                </p>
+              )}
+            </div>
+          )}
 
           {/* Close event */}
           {!isClosed && (

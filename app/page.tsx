@@ -138,7 +138,10 @@ export default function HomePage() {
                         )}
                       </div>
                       <div className="text-right shrink-0">
-                        <p className="font-bold text-indigo-600">{formatCurrency(event.cost_per_person)}</p>
+                        {event.pricing_mode === 'flexible' && event.cost_per_person === 0
+                          ? <p className="font-bold text-purple-600 dark:text-purple-400">Flexible</p>
+                          : <p className="font-bold text-indigo-600">{formatCurrency(event.cost_per_person)}</p>
+                        }
                         <p className="text-xs text-gray-400">per person</p>
                       </div>
                     </div>
@@ -161,7 +164,10 @@ export default function HomePage() {
                         )}
                       </div>
                       <div className="text-right shrink-0">
-                        <p className="font-bold text-gray-500 dark:text-gray-400">{formatCurrency(event.cost_per_person)}</p>
+                        {event.pricing_mode === 'flexible' && event.cost_per_person === 0
+                          ? <p className="font-bold text-gray-500 dark:text-gray-400">Flexible</p>
+                          : <p className="font-bold text-gray-500 dark:text-gray-400">{formatCurrency(event.cost_per_person)}</p>
+                        }
                         <p className="text-xs text-gray-400">per person</p>
                       </div>
                     </div>

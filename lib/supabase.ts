@@ -23,6 +23,7 @@ export type Event = {
   organiser_pin: string | null
   organiser_user_id: string | null
   leave_restriction: string
+  pricing_mode: string
   notify_whatsapp: boolean
   notify_whatsapp_number: string | null
   notify_email: boolean

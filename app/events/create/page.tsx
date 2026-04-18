@@ -8,13 +8,23 @@ import { supabase } from '@/lib/supabase'
 import { generateCode } from '@/lib/utils'
 import { ThemeToggle } from '@/components/ThemeToggle'
 
+type PricingMode = 'split' | 'fixed' | 'flexible'
+
+const PRICING_MODES: { value: PricingMode; label: string; description: string }[] = [
+  { value: 'split', label: 'Split', description: 'Enter the total cost and split it across attendees' },
+  { value: 'fixed', label: 'Fixed', description: 'Set a flat per-person rate — cost stays the same regardless of headcount' },
+  { value: 'flexible', label: 'Flexible', description: 'Let people RSVP now and confirm the cost after the event' },
+]
+
 export default function CreateEventPage() {
   const router = useRouter()
   const { user, loading: authLoading } = useAuth()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [pricingMode, setPricingMode] = useState<PricingMode>('split')
   const [totalCost, setTotalCost] = useState('')
   const [maxParticipants, setMaxParticipants] = useState('')
+  const [costPerPerson, setCostPerPerson] = useState('')
   const [enablePayID, setEnablePayID] = useState(true)
   const [enableBankTransfer, setEnableBankTransfer] = useState(false)
   const [enableWhatsApp, setEnableWhatsApp] = useState(false)
@@ -24,9 +34,14 @@ export default function CreateEventPage() {
     if (!authLoading && !user) router.push('/auth/login')
   }, [user, authLoading, router])
 
-  const costPerPerson =
-    totalCost && maxParticipants && Number(maxParticipants) > 0
+  const calculatedCostPerPerson =
+    pricingMode === 'split' && totalCost && maxParticipants && Number(maxParticipants) > 0
       ? (Number(totalCost) / Number(maxParticipants)).toFixed(2)
+      : null
+
+  const calculatedTotal =
+    pricingMode === 'fixed' && costPerPerson && maxParticipants && Number(maxParticipants) > 0
+      ? (Number(costPerPerson) * Number(maxParticipants)).toFixed(2)
       : null
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -46,7 +61,6 @@ export default function CreateEventPage() {
     const name = data.get('name') as string
     const description = data.get('description') as string
     const event_date = data.get('event_date') as string
-    const total_cost = Number(data.get('total_cost'))
     const max_participants = Number(data.get('max_participants'))
     const organiser_name = (data.get('organiser_name') as string).trim() || (user.user_metadata?.name ?? '')
     const leave_restriction = data.get('leave_restriction') as string
@@ -56,6 +70,18 @@ export default function CreateEventPage() {
     const account_name = enableBankTransfer ? (data.get('account_name') as string) || null : null
     const notify_whatsapp_number = enableWhatsApp ? (data.get('notify_whatsapp_number') as string) || null : null
     const notify_email_address = enableEmail ? (data.get('notify_email_address') as string) || null : null
+
+    let total_cost = 0
+    let cost_per_person = 0
+
+    if (pricingMode === 'split') {
+      total_cost = Number(data.get('total_cost'))
+      cost_per_person = max_participants > 0 ? total_cost / max_participants : 0
+    } else if (pricingMode === 'fixed') {
+      cost_per_person = Number(data.get('cost_per_person'))
+      total_cost = cost_per_person * max_participants
+    }
+    // flexible: both stay 0
 
     if (max_participants < 1) {
       setError('Max participants must be at least 1.')
@@ -67,9 +93,9 @@ export default function CreateEventPage() {
 
     const { error: insertError } = await supabase.from('events').insert({
       name, description: description || null, event_date: event_date || null,
-      total_cost, max_participants, organiser_name, payid, bsb,
+      total_cost, max_participants, organiser_name, cost_per_person, payid, bsb,
       account_number, account_name, code, status: 'active',
-      organiser_user_id: user.id, leave_restriction,
+      organiser_user_id: user.id, leave_restriction, pricing_mode: pricingMode,
       notify_whatsapp: enableWhatsApp, notify_whatsapp_number,
       notify_email: enableEmail, notify_email_address,
     })
@@ -127,29 +153,96 @@ export default function CreateEventPage() {
                 <input id="event_date" name="event_date" type="date" className={inputClass} />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5" htmlFor="total_cost">
-                    Total cost ($) <span className="text-red-500">*</span>
-                  </label>
-                  <input id="total_cost" name="total_cost" type="number" required
-                    min="0.01" step="0.01" placeholder="0.00"
-                    value={totalCost} onChange={e => setTotalCost(e.target.value)} className={inputClass} />
+              {/* Pricing mode selector */}
+              <div>
+                <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Pricing mode <span className="text-red-500">*</span></p>
+                <div className="grid grid-cols-3 gap-2">
+                  {PRICING_MODES.map(mode => (
+                    <button
+                      key={mode.value}
+                      type="button"
+                      onClick={() => setPricingMode(mode.value)}
+                      className={`rounded-xl px-3 py-2.5 text-sm font-semibold border transition-colors ${
+                        pricingMode === mode.value
+                          ? 'bg-indigo-600 text-white border-indigo-600'
+                          : 'bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:border-indigo-400'
+                      }`}
+                    >
+                      {mode.label}
+                    </button>
+                  ))}
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5" htmlFor="max_participants">
-                    No. of people <span className="text-red-500">*</span>
-                  </label>
-                  <input id="max_participants" name="max_participants" type="number" required
-                    min="1" step="1" placeholder="e.g. 10"
-                    value={maxParticipants} onChange={e => setMaxParticipants(e.target.value)} className={inputClass} />
-                </div>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                  {PRICING_MODES.find(m => m.value === pricingMode)?.description}
+                </p>
               </div>
 
-              {costPerPerson && (
-                <div className="bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800 rounded-xl px-4 py-3 flex items-center justify-between">
-                  <span className="text-sm text-indigo-700 dark:text-indigo-300 font-medium">Cost per person</span>
-                  <span className="text-lg font-bold text-indigo-700 dark:text-indigo-300">${costPerPerson}</span>
+              {/* Split mode fields */}
+              {pricingMode === 'split' && (
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5" htmlFor="total_cost">
+                      Total cost ($) <span className="text-red-500">*</span>
+                    </label>
+                    <input id="total_cost" name="total_cost" type="number" required
+                      min="0.01" step="0.01" placeholder="0.00"
+                      value={totalCost} onChange={e => setTotalCost(e.target.value)} className={inputClass} />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5" htmlFor="max_participants">
+                      No. of people <span className="text-red-500">*</span>
+                    </label>
+                    <input id="max_participants" name="max_participants" type="number" required
+                      min="1" step="1" placeholder="e.g. 10"
+                      value={maxParticipants} onChange={e => setMaxParticipants(e.target.value)} className={inputClass} />
+                  </div>
+                  {calculatedCostPerPerson && (
+                    <div className="col-span-2 bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800 rounded-xl px-4 py-3 flex items-center justify-between">
+                      <span className="text-sm text-indigo-700 dark:text-indigo-300 font-medium">Cost per person</span>
+                      <span className="text-lg font-bold text-indigo-700 dark:text-indigo-300">${calculatedCostPerPerson}</span>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Fixed mode fields */}
+              {pricingMode === 'fixed' && (
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5" htmlFor="cost_per_person">
+                      Cost per person ($) <span className="text-red-500">*</span>
+                    </label>
+                    <input id="cost_per_person" name="cost_per_person" type="number" required
+                      min="0.01" step="0.01" placeholder="0.00"
+                      value={costPerPerson} onChange={e => setCostPerPerson(e.target.value)} className={inputClass} />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5" htmlFor="max_participants">
+                      Max people <span className="text-red-500">*</span>
+                    </label>
+                    <input id="max_participants" name="max_participants" type="number" required
+                      min="1" step="1" placeholder="e.g. 20"
+                      value={maxParticipants} onChange={e => setMaxParticipants(e.target.value)} className={inputClass} />
+                  </div>
+                  {calculatedTotal && (
+                    <div className="col-span-2 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl px-4 py-3 flex items-center justify-between">
+                      <span className="text-sm text-gray-600 dark:text-gray-300 font-medium">Max total if full</span>
+                      <span className="text-lg font-bold text-gray-700 dark:text-gray-200">${calculatedTotal}</span>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Flexible mode fields */}
+              {pricingMode === 'flexible' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5" htmlFor="max_participants">
+                    Max people <span className="text-red-500">*</span>
+                  </label>
+                  <input id="max_participants" name="max_participants" type="number" required
+                    min="1" step="1" placeholder="e.g. 20"
+                    value={maxParticipants} onChange={e => setMaxParticipants(e.target.value)} className={inputClass} />
+                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-1.5">You&apos;ll confirm the cost after the event from your dashboard.</p>
                 </div>
               )}
 
