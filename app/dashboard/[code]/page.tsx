@@ -27,6 +27,9 @@ export default function DashboardPage() {
   const [showAddForm, setShowAddForm] = useState(false)
   const [addName, setAddName] = useState('')
   const [addingParticipant, setAddingParticipant] = useState(false)
+  const [showJoinForm, setShowJoinForm] = useState(false)
+  const [joinAsName, setJoinAsName] = useState('')
+  const [joiningAs, setJoiningAs] = useState(false)
 
   // Legacy PIN gate
   const [authed, setAuthed] = useState(false)
@@ -139,6 +142,24 @@ export default function DashboardPage() {
     setAddingParticipant(false)
   }
 
+  async function joinAsParticipant(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    if (!event || !user || !joinAsName.trim()) return
+    setJoiningAs(true)
+    const { data } = await supabase.from('participants').insert({
+      event_id: event.id,
+      name: joinAsName.trim(),
+      paid: false,
+      user_id: user.id,
+    }).select().single()
+    if (data) {
+      setParticipants(prev => [...prev, data])
+      setShowJoinForm(false)
+      setJoinAsName('')
+    }
+    setJoiningAs(false)
+  }
+
   async function closeEvent() {
     if (!event) return
     setClosing(true)
@@ -239,6 +260,7 @@ export default function DashboardPage() {
     )
   }
 
+  const hasJoinedAsParticipant = participants.some(p => p.user_id === user?.id)
   const paidCount = participants.filter(p => p.paid).length
   const unpaidCount = participants.filter(p => !p.paid).length
   const paidTotal = paidCount * event.cost_per_person
@@ -365,6 +387,47 @@ export default function DashboardPage() {
                   {copied ? 'Copied!' : 'Copy'}
                 </button>
               </div>
+            </div>
+          )}
+
+          {/* Join as participant */}
+          {!isClosed && !hasJoinedAsParticipant && spotsLeft > 0 && (
+            <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
+              <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">Join as participant</p>
+              {!showJoinForm ? (
+                <button
+                  onClick={() => { setShowJoinForm(true); setJoinAsName(user?.user_metadata?.name ?? '') }}
+                  className="w-full border border-indigo-200 text-indigo-600 text-sm font-semibold rounded-xl py-2.5 hover:bg-indigo-50 transition-colors"
+                >
+                  + Join this event yourself
+                </button>
+              ) : (
+                <form onSubmit={joinAsParticipant} className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={joinAsName}
+                    onChange={e => setJoinAsName(e.target.value)}
+                    placeholder="Your name"
+                    autoFocus
+                    required
+                    className="flex-1 rounded-xl border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  />
+                  <button
+                    type="submit"
+                    disabled={joiningAs || !joinAsName.trim()}
+                    className="shrink-0 bg-indigo-600 text-white text-sm font-semibold px-4 py-2 rounded-xl hover:bg-indigo-700 transition-colors disabled:opacity-50"
+                  >
+                    {joiningAs ? '…' : 'Join'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowJoinForm(false)}
+                    className="shrink-0 text-sm text-gray-400 hover:text-gray-600 px-2"
+                  >
+                    Cancel
+                  </button>
+                </form>
+              )}
             </div>
           )}
 
