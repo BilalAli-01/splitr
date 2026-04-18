@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { useAuth } from '@/lib/auth-context'
 import { supabase, Event, Participant } from '@/lib/supabase'
 import { formatCurrency, formatDate, canLeave, LEAVE_RESTRICTION_LABELS } from '@/lib/utils'
+import { ThemeToggle } from '@/components/ThemeToggle'
 
 export default function JoinPage() {
   const { code } = useParams<{ code: string }>()
@@ -128,8 +129,8 @@ export default function JoinPage() {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center px-4 text-center">
         <p className="text-4xl mb-4">🤔</p>
-        <h2 className="text-xl font-semibold text-gray-900 mb-2">Event not found</h2>
-        <p className="text-gray-500 text-sm mb-6">Check the link and try again.</p>
+        <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">Event not found</h2>
+        <p className="text-gray-500 dark:text-gray-400 text-sm mb-6">Check the link and try again.</p>
         <Link href="/" className="text-indigo-600 text-sm font-medium hover:underline">Go home</Link>
       </div>
     )
@@ -142,16 +143,19 @@ export default function JoinPage() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <header className="bg-white border-b border-gray-200 px-4 py-4">
+      <header className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 px-4 py-4">
         <div className="max-w-lg mx-auto flex items-center justify-between">
           <Link href="/" className="text-2xl font-bold text-indigo-600 tracking-tight">Splitr</Link>
-          <span className="text-xs text-gray-400">{user.user_metadata?.name}</span>
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
+            <span className="text-xs text-gray-400 dark:text-gray-500">{user.user_metadata?.name}</span>
+          </div>
         </div>
         {isAdmin && (
           <div className="max-w-lg mx-auto mt-2 flex items-center gap-1 text-xs">
             <span className="text-gray-400 mr-1">View as:</span>
-            <Link href="/admin" className="px-2.5 py-1 rounded-full bg-gray-100 text-gray-500 hover:bg-gray-200 transition-colors">Admin</Link>
-            <Link href={`/dashboard/${code}`} className="px-2.5 py-1 rounded-full bg-gray-100 text-gray-500 hover:bg-gray-200 transition-colors">Organiser</Link>
+            <Link href="/admin" className="px-2.5 py-1 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">Admin</Link>
+            <Link href={`/dashboard/${code}`} className="px-2.5 py-1 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">Organiser</Link>
             <span className="px-2.5 py-1 rounded-full bg-indigo-600 text-white font-semibold">Participant</span>
           </div>
         )}
@@ -161,26 +165,26 @@ export default function JoinPage() {
         <div className="max-w-lg mx-auto space-y-5">
 
           {/* Event info */}
-          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm p-5">
             <div className="flex items-start justify-between gap-2">
-              <h2 className="text-xl font-bold text-gray-900">{event.name}</h2>
-              {isClosed && <span className="text-xs bg-gray-100 text-gray-500 font-semibold px-2.5 py-1 rounded-full shrink-0">Closed</span>}
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white">{event.name}</h2>
+              {isClosed && <span className="text-xs bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 font-semibold px-2.5 py-1 rounded-full shrink-0">Closed</span>}
             </div>
-            {event.description && <p className="text-sm text-gray-500 mt-1.5">{event.description}</p>}
-            {event.event_date && <p className="text-sm text-gray-500 mt-1">{formatDate(event.event_date)}</p>}
+            {event.description && <p className="text-sm text-gray-500 dark:text-gray-400 mt-1.5">{event.description}</p>}
+            {event.event_date && <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{formatDate(event.event_date)}</p>}
 
-            <div className="mt-4 bg-indigo-50 rounded-xl p-4 flex items-center justify-between">
+            <div className="mt-4 bg-indigo-50 dark:bg-indigo-900/20 rounded-xl p-4 flex items-center justify-between">
               <div>
-                <p className="text-xs text-indigo-500 font-medium">Your share</p>
-                <p className="text-3xl font-bold text-indigo-700 mt-0.5">{formatCurrency(event.cost_per_person)}</p>
+                <p className="text-xs text-indigo-500 dark:text-indigo-400 font-medium">Your share</p>
+                <p className="text-3xl font-bold text-indigo-700 dark:text-indigo-300 mt-0.5">{formatCurrency(event.cost_per_person)}</p>
               </div>
               <div className="text-right">
-                <p className="text-xs text-indigo-400">Organised by</p>
-                <p className="text-sm font-semibold text-indigo-700">{event.organiser_name}</p>
+                <p className="text-xs text-indigo-400 dark:text-indigo-500">Organised by</p>
+                <p className="text-sm font-semibold text-indigo-700 dark:text-indigo-300">{event.organiser_name}</p>
               </div>
             </div>
 
-            <div className="mt-3 flex items-center justify-between text-xs text-gray-400">
+            <div className="mt-3 flex items-center justify-between text-xs text-gray-400 dark:text-gray-500">
               <span>{participantCount} of {event.max_participants} joined</span>
               {event.leave_restriction !== 'none' && (
                 <span>Leave policy: {LEAVE_RESTRICTION_LABELS[event.leave_restriction]}</span>
@@ -190,17 +194,17 @@ export default function JoinPage() {
 
           {/* Who's joined */}
           {allParticipants.length > 0 && (
-            <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-              <div className="px-5 py-4 border-b border-gray-100">
-                <h3 className="font-semibold text-gray-900">Who&apos;s joined</h3>
+            <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
+              <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-700">
+                <h3 className="font-semibold text-gray-900 dark:text-white">Who&apos;s joined</h3>
               </div>
-              <ul className="divide-y divide-gray-100">
+              <ul className="divide-y divide-gray-100 dark:divide-gray-700">
                 {allParticipants.map(p => (
                   <li key={p.id} className="px-5 py-3 flex items-center gap-3">
-                    <div className="w-7 h-7 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-xs font-semibold shrink-0">
+                    <div className="w-7 h-7 rounded-full bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 flex items-center justify-center text-xs font-semibold shrink-0">
                       {p.name.charAt(0).toUpperCase()}
                     </div>
-                    <p className="text-sm text-gray-800">{p.name}</p>
+                    <p className="text-sm text-gray-800 dark:text-gray-200">{p.name}</p>
                   </li>
                 ))}
               </ul>
@@ -210,23 +214,23 @@ export default function JoinPage() {
           {/* Already joined — show their spots + payment info */}
           {alreadyJoined && (
             <>
-              <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-                <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-                  <h3 className="font-semibold text-gray-900">Your spot{myParticipants.length > 1 ? 's' : ''}</h3>
+              <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
+                <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
+                  <h3 className="font-semibold text-gray-900 dark:text-white">Your spot{myParticipants.length > 1 ? 's' : ''}</h3>
                   {!isClosed && leaveCheck.allowed && (
-                    <span className="text-xs text-gray-400">Tap to leave</span>
+                    <span className="text-xs text-gray-400 dark:text-gray-500">Tap to leave</span>
                   )}
                 </div>
-                <ul className="divide-y divide-gray-100">
+                <ul className="divide-y divide-gray-100 dark:divide-gray-700">
                   {myParticipants.map(p => (
                     <li key={p.id} className="px-5 py-3.5 flex items-center justify-between gap-3">
                       <div className="flex items-center gap-3 min-w-0">
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold shrink-0 ${p.paid ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold shrink-0 ${p.paid ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400' : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400'}`}>
                           {p.name.charAt(0).toUpperCase()}
                         </div>
                         <div>
-                          <p className="text-sm font-medium text-gray-900">{p.name}</p>
-                          <p className={`text-xs ${p.paid ? 'text-green-600' : 'text-amber-600'}`}>
+                          <p className="text-sm font-medium text-gray-900 dark:text-white">{p.name}</p>
+                          <p className={`text-xs ${p.paid ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-400'}`}>
                             {p.paid ? 'Paid ✓' : 'Payment pending'}
                           </p>
                         </div>
@@ -235,11 +239,11 @@ export default function JoinPage() {
                       {!isClosed && (
                         <>
                           {!leaveCheck.allowed ? (
-                            <span className="text-xs text-gray-400">Can&apos;t leave</span>
+                            <span className="text-xs text-gray-400 dark:text-gray-500">Can&apos;t leave</span>
                           ) : confirmLeave !== p.id ? (
                             <button
                               onClick={() => setConfirmLeave(p.id)}
-                              className="text-xs font-semibold px-2.5 py-1.5 rounded-lg bg-red-50 text-red-500 hover:bg-red-100 transition-colors"
+                              className="text-xs font-semibold px-2.5 py-1.5 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-500 hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
                             >
                               Leave
                             </button>
@@ -254,7 +258,7 @@ export default function JoinPage() {
                               </button>
                               <button
                                 onClick={() => setConfirmLeave(null)}
-                                className="text-xs font-semibold px-2.5 py-1.5 rounded-lg bg-gray-100 text-gray-500 hover:bg-gray-200 transition-colors"
+                                className="text-xs font-semibold px-2.5 py-1.5 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
                               >
                                 Cancel
                               </button>
@@ -266,49 +270,49 @@ export default function JoinPage() {
                   ))}
                 </ul>
                 {!leaveCheck.allowed && leaveCheck.reason && (
-                  <p className="px-5 py-3 text-xs text-gray-400 border-t border-gray-100">{leaveCheck.reason}</p>
+                  <p className="px-5 py-3 text-xs text-gray-400 dark:text-gray-500 border-t border-gray-100 dark:border-gray-700">{leaveCheck.reason}</p>
                 )}
               </div>
 
               {/* Payment details */}
               {!isClosed && (
-                <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-                  <div className="bg-green-50 border-b border-green-100 px-5 py-4 flex items-center gap-3">
+                <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
+                  <div className="bg-green-50 dark:bg-green-900/20 border-b border-green-100 dark:border-green-800 px-5 py-4 flex items-center gap-3">
                     <div className="w-9 h-9 rounded-full bg-green-500 flex items-center justify-center shrink-0">
                       <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                       </svg>
                     </div>
                     <div>
-                      <p className="font-semibold text-green-900">
+                      <p className="font-semibold text-green-900 dark:text-green-300">
                         {justJoined ? "You're in!" : "You've joined"}
                       </p>
-                      <p className="text-xs text-green-700">Send your payment using one of the options below</p>
+                      <p className="text-xs text-green-700 dark:text-green-400">Send your payment using one of the options below</p>
                     </div>
                   </div>
 
                   <div className="p-5 space-y-3">
-                    <div className="flex items-center justify-between bg-gray-50 rounded-xl px-4 py-3">
-                      <p className="text-xs text-gray-500">Amount{myParticipants.length > 1 ? ` (×${myParticipants.length})` : ''}</p>
-                      <p className="text-lg font-bold text-gray-900">
+                    <div className="flex items-center justify-between bg-gray-50 dark:bg-gray-700 rounded-xl px-4 py-3">
+                      <p className="text-xs text-gray-500 dark:text-gray-400">Amount{myParticipants.length > 1 ? ` (×${myParticipants.length})` : ''}</p>
+                      <p className="text-lg font-bold text-gray-900 dark:text-white">
                         {formatCurrency(event.cost_per_person * myParticipants.length)}
                       </p>
                     </div>
 
-                    <div className="bg-amber-50 border border-amber-100 rounded-xl px-4 py-3">
-                      <p className="text-xs text-amber-800 font-medium">
+                    <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800 rounded-xl px-4 py-3">
+                      <p className="text-xs text-amber-800 dark:text-amber-300 font-medium">
                         💡 Use &quot;{myParticipants.map(p => p.name).join(' & ')}&quot; as your payment reference.
                       </p>
                     </div>
 
                     {/* PayID */}
                     {event.payid && (
-                      <div className="border border-gray-200 rounded-xl overflow-hidden">
-                        <p className="px-4 pt-3 pb-1 text-xs font-semibold text-gray-500 uppercase tracking-wider">PayID — no fees</p>
+                      <div className="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden">
+                        <p className="px-4 pt-3 pb-1 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">PayID — no fees</p>
                         <div className="flex items-center justify-between px-4 pb-3 gap-3">
                           <div className="min-w-0">
-                            <p className="text-sm font-semibold text-gray-900 break-all">{event.payid}</p>
-                            <p className="text-xs text-gray-400">Pay to {event.organiser_name}</p>
+                            <p className="text-sm font-semibold text-gray-900 dark:text-white break-all">{event.payid}</p>
+                            <p className="text-xs text-gray-400 dark:text-gray-500">Pay to {event.organiser_name}</p>
                           </div>
                           <button
                             onClick={copyPayID}
@@ -322,20 +326,20 @@ export default function JoinPage() {
 
                     {/* Bank Transfer */}
                     {event.bsb && (
-                      <div className="border border-gray-200 rounded-xl overflow-hidden">
-                        <p className="px-4 pt-3 pb-1 text-xs font-semibold text-gray-500 uppercase tracking-wider">Bank transfer — no fees</p>
+                      <div className="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden">
+                        <p className="px-4 pt-3 pb-1 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Bank transfer — no fees</p>
                         <div className="px-4 pb-3 space-y-1.5">
                           <div className="flex items-center justify-between">
-                            <p className="text-xs text-gray-500">Account name</p>
-                            <p className="text-sm font-semibold text-gray-900">{event.account_name}</p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">Account name</p>
+                            <p className="text-sm font-semibold text-gray-900 dark:text-white">{event.account_name}</p>
                           </div>
                           <div className="flex items-center justify-between">
-                            <p className="text-xs text-gray-500">BSB</p>
-                            <p className="text-sm font-semibold text-gray-900">{event.bsb}</p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">BSB</p>
+                            <p className="text-sm font-semibold text-gray-900 dark:text-white">{event.bsb}</p>
                           </div>
                           <div className="flex items-center justify-between">
-                            <p className="text-xs text-gray-500">Account number</p>
-                            <p className="text-sm font-semibold text-gray-900">{event.account_number}</p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">Account number</p>
+                            <p className="text-sm font-semibold text-gray-900 dark:text-white">{event.account_number}</p>
                           </div>
                         </div>
                       </div>
@@ -351,15 +355,15 @@ export default function JoinPage() {
           {!alreadyJoined && !isClosed && (
             <>
               {isFull ? (
-                <div className="bg-white rounded-2xl border border-red-100 shadow-sm p-5 text-center">
+                <div className="bg-white dark:bg-gray-800 rounded-2xl border border-red-100 dark:border-red-900/30 shadow-sm p-5 text-center">
                   <p className="text-3xl mb-3">😔</p>
-                  <p className="font-semibold text-gray-900">This event is full</p>
-                  <p className="text-sm text-gray-500 mt-1">All {event.max_participants} spots are taken.</p>
+                  <p className="font-semibold text-gray-900 dark:text-white">This event is full</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">All {event.max_participants} spots are taken.</p>
                 </div>
               ) : (
-                <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
-                  <h3 className="font-semibold text-gray-900 mb-1">Join this event</h3>
-                  <p className="text-sm text-gray-500 mb-5">
+                <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm p-5">
+                  <h3 className="font-semibold text-gray-900 dark:text-white mb-1">Join this event</h3>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mb-5">
                     Add your name — or add extra names for friends you&apos;re bringing.
                   </p>
 
@@ -377,7 +381,7 @@ export default function JoinPage() {
                             }}
                             placeholder={i === 0 ? `Your name (e.g. ${user.user_metadata?.name ?? 'Bilal'})` : `Person ${i + 1}'s name`}
                             autoFocus={i === 0}
-                            className="flex-1 rounded-xl border border-gray-300 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                            className="flex-1 rounded-xl border border-gray-300 dark:border-gray-600 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white dark:bg-gray-700 dark:text-white"
                           />
                           {names.length > 1 && (
                             <button
@@ -396,7 +400,7 @@ export default function JoinPage() {
                       <button
                         type="button"
                         onClick={() => setNames([...names, ''])}
-                        className="text-sm text-indigo-600 font-medium hover:underline"
+                        className="text-sm text-indigo-600 dark:text-indigo-400 font-medium hover:underline"
                       >
                         + Add another person
                       </button>
@@ -417,8 +421,8 @@ export default function JoinPage() {
           )}
 
           {isClosed && !alreadyJoined && (
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 text-center">
-              <p className="text-sm text-gray-500">This event is closed and no longer accepting new participants.</p>
+            <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm p-5 text-center">
+              <p className="text-sm text-gray-500 dark:text-gray-400">This event is closed and no longer accepting new participants.</p>
             </div>
           )}
 

@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { useAuth } from '@/lib/auth-context'
 import { supabase, Event } from '@/lib/supabase'
 import { formatCurrency, formatDate } from '@/lib/utils'
+import { ThemeToggle } from '@/components/ThemeToggle'
 
 type Participation = {
   id: string
@@ -72,15 +73,15 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <header className="bg-white border-b border-gray-200 px-4 py-4 sticky top-0 z-10">
+      <header className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 px-4 py-4 sticky top-0 z-10">
         <div className="max-w-lg mx-auto flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-indigo-600 tracking-tight">Splitr</h1>
-            <p className="text-xs text-gray-500 mt-0.5">Hey, {name} 👋</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Hey, {name} 👋</p>
           </div>
           <div className="flex items-center gap-3">
             {user.user_metadata?.is_admin && (
-              <Link href="/admin" className="text-xs bg-red-100 text-red-600 font-semibold px-2.5 py-1 rounded-full hover:bg-red-200 transition-colors">
+              <Link href="/admin" className="text-xs bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 font-semibold px-2.5 py-1 rounded-full hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors">
                 Admin
               </Link>
             )}
@@ -90,7 +91,8 @@ export default function HomePage() {
             >
               + Create
             </Link>
-            <button onClick={signOut} className="text-sm text-gray-400 hover:text-gray-600 transition-colors">
+            <ThemeToggle />
+            <button onClick={signOut} className="text-sm text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
               Log out
             </button>
           </div>
@@ -101,10 +103,10 @@ export default function HomePage() {
         <div className="max-w-lg mx-auto space-y-7">
 
           {!hasAnything && (
-            <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-8 text-center">
+            <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm p-8 text-center">
               <p className="text-3xl mb-3">🎉</p>
-              <p className="font-semibold text-gray-900">No events yet</p>
-              <p className="text-sm text-gray-500 mt-1 mb-5">
+              <p className="font-semibold text-gray-900 dark:text-white">No events yet</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 mb-5">
                 Create your first event or join one via a shared link.
               </p>
               <Link
@@ -126,13 +128,13 @@ export default function HomePage() {
                   <Link
                     key={event.id}
                     href={`/dashboard/${event.code}`}
-                    className="block bg-white rounded-2xl border border-gray-200 shadow-sm p-4 hover:border-indigo-200 transition-colors"
+                    className="block bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm p-4 hover:border-indigo-200 dark:hover:border-indigo-700 transition-colors"
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
-                        <p className="font-semibold text-gray-900 truncate">{event.name}</p>
+                        <p className="font-semibold text-gray-900 dark:text-white truncate">{event.name}</p>
                         {event.event_date && (
-                          <p className="text-xs text-gray-500 mt-0.5">{formatDate(event.event_date)}</p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{formatDate(event.event_date)}</p>
                         )}
                       </div>
                       <div className="text-right shrink-0">
@@ -146,20 +148,20 @@ export default function HomePage() {
                   <Link
                     key={event.id}
                     href={`/dashboard/${event.code}`}
-                    className="block bg-white rounded-2xl border border-gray-100 shadow-sm p-4 opacity-55 hover:opacity-75 transition-opacity"
+                    className="block bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm p-4 opacity-55 hover:opacity-75 transition-opacity"
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">
-                          <p className="font-semibold text-gray-900 truncate">{event.name}</p>
-                          <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full shrink-0">Closed</span>
+                          <p className="font-semibold text-gray-900 dark:text-white truncate">{event.name}</p>
+                          <span className="text-xs bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 px-2 py-0.5 rounded-full shrink-0">Closed</span>
                         </div>
                         {event.event_date && (
-                          <p className="text-xs text-gray-500 mt-0.5">{formatDate(event.event_date)}</p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{formatDate(event.event_date)}</p>
                         )}
                       </div>
                       <div className="text-right shrink-0">
-                        <p className="font-bold text-gray-500">{formatCurrency(event.cost_per_person)}</p>
+                        <p className="font-bold text-gray-500 dark:text-gray-400">{formatCurrency(event.cost_per_person)}</p>
                         <p className="text-xs text-gray-400">per person</p>
                       </div>
                     </div>
@@ -179,14 +181,14 @@ export default function HomePage() {
                   <Link
                     key={p.id}
                     href={`/join/${p.events?.code}`}
-                    className="block bg-white rounded-2xl border border-gray-200 shadow-sm p-4 hover:border-indigo-200 transition-colors"
+                    className="block bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm p-4 hover:border-indigo-200 dark:hover:border-indigo-700 transition-colors"
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
-                        <p className="font-semibold text-gray-900 truncate">{p.events?.name}</p>
-                        <p className="text-xs text-gray-500 mt-0.5">Joined as <span className="font-medium">{p.name}</span></p>
+                        <p className="font-semibold text-gray-900 dark:text-white truncate">{p.events?.name}</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Joined as <span className="font-medium">{p.name}</span></p>
                         {p.events?.event_date && (
-                          <p className="text-xs text-gray-500">{formatDate(p.events.event_date)}</p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">{formatDate(p.events.event_date)}</p>
                         )}
                       </div>
                       <span className={`shrink-0 text-xs font-semibold px-2.5 py-1 rounded-full ${
@@ -201,18 +203,18 @@ export default function HomePage() {
                   <Link
                     key={p.id}
                     href={`/join/${p.events?.code}`}
-                    className="block bg-white rounded-2xl border border-gray-100 shadow-sm p-4 opacity-55 hover:opacity-75 transition-opacity"
+                    className="block bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm p-4 opacity-55 hover:opacity-75 transition-opacity"
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">
-                          <p className="font-semibold text-gray-900 truncate">{p.events?.name}</p>
-                          <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full shrink-0">Closed</span>
+                          <p className="font-semibold text-gray-900 dark:text-white truncate">{p.events?.name}</p>
+                          <span className="text-xs bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 px-2 py-0.5 rounded-full shrink-0">Closed</span>
                         </div>
-                        <p className="text-xs text-gray-500 mt-0.5">Joined as <span className="font-medium">{p.name}</span></p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Joined as <span className="font-medium">{p.name}</span></p>
                       </div>
                       <span className={`shrink-0 text-xs font-semibold px-2.5 py-1 rounded-full ${
-                        p.paid ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
+                        p.paid ? 'bg-green-100 text-green-700' : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400'
                       }`}>
                         {p.paid ? 'Paid' : 'Unpaid'}
                       </span>

@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { useAuth } from '@/lib/auth-context'
 import { supabase } from '@/lib/supabase'
 import { generateCode } from '@/lib/utils'
+import { ThemeToggle } from '@/components/ThemeToggle'
 
 export default function CreateEventPage() {
   const router = useRouter()
@@ -81,24 +82,27 @@ export default function CreateEventPage() {
   }
   if (!user) return null
 
-  const inputClass = 'w-full rounded-xl border border-gray-300 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent'
+  const inputClass = 'w-full rounded-xl border border-gray-300 dark:border-gray-600 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white dark:bg-gray-700 dark:text-white'
 
   return (
     <div className="min-h-screen flex flex-col">
-      <header className="bg-white border-b border-gray-200 px-4 py-4 sticky top-0 z-10">
-        <div className="max-w-lg mx-auto flex items-center gap-3">
-          <Link href="/" className="text-gray-400 hover:text-gray-600 text-lg leading-none">←</Link>
-          <h1 className="text-lg font-semibold text-gray-900">Create event</h1>
+      <header className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 px-4 py-4 sticky top-0 z-10">
+        <div className="max-w-lg mx-auto flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Link href="/" className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-lg leading-none">←</Link>
+            <h1 className="text-lg font-semibold text-gray-900 dark:text-white">Create event</h1>
+          </div>
+          <ThemeToggle />
         </div>
       </header>
 
       <main className="flex-1 px-4 py-8">
         <div className="max-w-lg mx-auto">
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
             <form onSubmit={handleSubmit} className="space-y-5">
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="name">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5" htmlFor="name">
                   Event name <span className="text-red-500">*</span>
                 </label>
                 <input id="name" name="name" type="text" required
@@ -106,20 +110,20 @@ export default function CreateEventPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="description">Description</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5" htmlFor="description">Description</label>
                 <textarea id="description" name="description" rows={3}
                   placeholder="Optional — any extra details for your group"
-                  className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none" />
+                  className="w-full rounded-xl border border-gray-300 dark:border-gray-600 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none bg-white dark:bg-gray-700 dark:text-white" />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="event_date">Event date</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5" htmlFor="event_date">Event date</label>
                 <input id="event_date" name="event_date" type="date" className={inputClass} />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="total_cost">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5" htmlFor="total_cost">
                     Total cost ($) <span className="text-red-500">*</span>
                   </label>
                   <input id="total_cost" name="total_cost" type="number" required
@@ -127,7 +131,7 @@ export default function CreateEventPage() {
                     value={totalCost} onChange={e => setTotalCost(e.target.value)} className={inputClass} />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="max_participants">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5" htmlFor="max_participants">
                     No. of people <span className="text-red-500">*</span>
                   </label>
                   <input id="max_participants" name="max_participants" type="number" required
@@ -137,51 +141,51 @@ export default function CreateEventPage() {
               </div>
 
               {costPerPerson && (
-                <div className="bg-indigo-50 border border-indigo-100 rounded-xl px-4 py-3 flex items-center justify-between">
-                  <span className="text-sm text-indigo-700 font-medium">Cost per person</span>
-                  <span className="text-lg font-bold text-indigo-700">${costPerPerson}</span>
+                <div className="bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800 rounded-xl px-4 py-3 flex items-center justify-between">
+                  <span className="text-sm text-indigo-700 dark:text-indigo-300 font-medium">Cost per person</span>
+                  <span className="text-lg font-bold text-indigo-700 dark:text-indigo-300">${costPerPerson}</span>
                 </div>
               )}
 
-              <div className="border-t border-gray-100 pt-5 space-y-4">
+              <div className="border-t border-gray-100 dark:border-gray-700 pt-5 space-y-4">
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Payment methods</p>
-                  <p className="text-xs text-gray-500 mt-1">Choose which payment options to offer participants.</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Choose which payment options to offer participants.</p>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="organiser_name">Your display name</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5" htmlFor="organiser_name">Your display name</label>
                   <input id="organiser_name" name="organiser_name" type="text"
                     placeholder={user.user_metadata?.name ?? 'Your name'}
                     defaultValue={user.user_metadata?.name ?? ''} className={inputClass} />
-                  <p className="text-xs text-gray-400 mt-1.5">Shown to participants so they know who to pay.</p>
+                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-1.5">Shown to participants so they know who to pay.</p>
                 </div>
 
-                <div className="border border-gray-200 rounded-xl overflow-hidden">
+                <div className="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden">
                   <label className="flex items-center gap-3 px-4 py-3 cursor-pointer select-none">
                     <input type="checkbox" checked={enablePayID} onChange={e => setEnablePayID(e.target.checked)} className="w-4 h-4 rounded accent-indigo-600" />
                     <div>
-                      <p className="text-sm font-medium text-gray-900">PayID</p>
-                      <p className="text-xs text-gray-500">Instant bank transfer — no fees</p>
+                      <p className="text-sm font-medium text-gray-900 dark:text-white">PayID</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">Instant bank transfer — no fees</p>
                     </div>
                   </label>
                   {enablePayID && (
-                    <div className="px-4 pb-4 border-t border-gray-100 pt-3">
+                    <div className="px-4 pb-4 border-t border-gray-100 dark:border-gray-700 pt-3">
                       <input name="payid" type="text" placeholder="e.g. you@email.com or 0412 345 678" className={inputClass} />
                     </div>
                   )}
                 </div>
 
-                <div className="border border-gray-200 rounded-xl overflow-hidden">
+                <div className="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden">
                   <label className="flex items-center gap-3 px-4 py-3 cursor-pointer select-none">
                     <input type="checkbox" checked={enableBankTransfer} onChange={e => setEnableBankTransfer(e.target.checked)} className="w-4 h-4 rounded accent-indigo-600" />
                     <div>
-                      <p className="text-sm font-medium text-gray-900">Bank transfer</p>
-                      <p className="text-xs text-gray-500">BSB + account number — no fees</p>
+                      <p className="text-sm font-medium text-gray-900 dark:text-white">Bank transfer</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">BSB + account number — no fees</p>
                     </div>
                   </label>
                   {enableBankTransfer && (
-                    <div className="px-4 pb-4 border-t border-gray-100 pt-3 space-y-3">
+                    <div className="px-4 pb-4 border-t border-gray-100 dark:border-gray-700 pt-3 space-y-3">
                       <input name="account_name" type="text" placeholder="Account name" className={inputClass} />
                       <div className="grid grid-cols-2 gap-3">
                         <input name="bsb" type="text" placeholder="BSB (e.g. 062-000)" className={inputClass} />
@@ -192,12 +196,12 @@ export default function CreateEventPage() {
                 </div>
               </div>
 
-              <div className="border-t border-gray-100 pt-5">
-                <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="leave_restriction">
+              <div className="border-t border-gray-100 dark:border-gray-700 pt-5">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5" htmlFor="leave_restriction">
                   Allow participants to leave
                 </label>
                 <select id="leave_restriction" name="leave_restriction" defaultValue="none"
-                  className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white">
+                  className="w-full rounded-xl border border-gray-300 dark:border-gray-600 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white dark:bg-gray-700 dark:text-white">
                   <option value="none">Anytime (no restriction)</option>
                   <option value="1_day">Up to 1 day before the event</option>
                   <option value="3_days">Up to 3 days before the event</option>
@@ -206,7 +210,7 @@ export default function CreateEventPage() {
                 </select>
               </div>
 
-              {error && <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-red-600">{error}</div>}
+              {error && <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl px-4 py-3 text-sm text-red-600 dark:text-red-400">{error}</div>}
 
               <button type="submit" disabled={loading}
                 className="w-full bg-indigo-600 text-white rounded-xl py-3.5 text-sm font-semibold hover:bg-indigo-700 active:bg-indigo-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">

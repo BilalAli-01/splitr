@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { useAuth } from '@/lib/auth-context'
 import { supabase, Event } from '@/lib/supabase'
 import { formatCurrency, formatDate } from '@/lib/utils'
+import { ThemeToggle } from '@/components/ThemeToggle'
 
 export default function AdminPage() {
   const { user, loading: authLoading, signOut } = useAuth()
@@ -51,15 +52,16 @@ export default function AdminPage() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <header className="bg-white border-b border-gray-200 px-4 py-4 sticky top-0 z-10">
+      <header className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 px-4 py-4 sticky top-0 z-10">
         <div className="max-w-2xl mx-auto flex items-center justify-between">
           <div>
             <Link href="/" className="text-2xl font-bold text-indigo-600 tracking-tight">Splitr</Link>
-            <span className="ml-2 text-xs bg-red-100 text-red-600 font-semibold px-2 py-0.5 rounded-full">Admin</span>
+            <span className="ml-2 text-xs bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 font-semibold px-2 py-0.5 rounded-full">Admin</span>
           </div>
           <div className="flex items-center gap-3">
-            <Link href="/" className="text-sm text-gray-500 hover:text-gray-700">My events</Link>
-            <button onClick={signOut} className="text-sm text-gray-400 hover:text-gray-600">Log out</button>
+            <Link href="/" className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200">My events</Link>
+            <ThemeToggle />
+            <button onClick={signOut} className="text-sm text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">Log out</button>
           </div>
         </div>
       </header>
@@ -68,7 +70,7 @@ export default function AdminPage() {
         <div className="max-w-2xl mx-auto space-y-5">
 
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-gray-900">All events ({events.length})</h2>
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">All events ({events.length})</h2>
           </div>
 
           <input
@@ -76,11 +78,11 @@ export default function AdminPage() {
             placeholder="Search by name, organiser, or code…"
             value={search}
             onChange={e => setSearch(e.target.value)}
-            className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+            className="w-full rounded-xl border border-gray-300 dark:border-gray-600 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white dark:bg-gray-800 dark:text-white"
           />
 
           {active.length === 0 && closed.length === 0 && (
-            <div className="bg-white rounded-2xl border border-gray-200 p-8 text-center">
+            <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-8 text-center">
               <p className="text-gray-400 text-sm">No events found.</p>
             </div>
           )}
@@ -113,16 +115,16 @@ function AdminEventRow({ event }: { event: Event }) {
   return (
     <Link
       href={`/dashboard/${event.code}`}
-      className="block bg-white rounded-2xl border border-gray-200 shadow-sm p-4 hover:border-indigo-200 transition-colors"
+      className="block bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm p-4 hover:border-indigo-200 dark:hover:border-indigo-700 transition-colors"
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <p className="font-semibold text-gray-900 truncate">{event.name}</p>
-            <span className="text-xs font-mono bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded">{event.code}</span>
+            <p className="font-semibold text-gray-900 dark:text-white truncate">{event.name}</p>
+            <span className="text-xs font-mono bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 px-1.5 py-0.5 rounded">{event.code}</span>
           </div>
-          <p className="text-xs text-gray-500 mt-0.5">by {event.organiser_name}</p>
-          {event.event_date && <p className="text-xs text-gray-400">{formatDate(event.event_date)}</p>}
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">by {event.organiser_name}</p>
+          {event.event_date && <p className="text-xs text-gray-400 dark:text-gray-500">{formatDate(event.event_date)}</p>}
         </div>
         <div className="text-right shrink-0">
           <p className="font-bold text-indigo-600">{formatCurrency(event.cost_per_person)}</p>
