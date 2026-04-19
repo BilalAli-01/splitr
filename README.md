@@ -1,6 +1,6 @@
 # Splitr
 
-**[splitr-one-kappa.vercel.app](https://splitr-one-kappa.vercel.app)**
+**[splitrpay.vercel.app](https://splitrpay.vercel.app)**
 
 A mobile-first web app for splitting group event costs in Australia. Create an event, share the link, and everyone knows exactly how much to send via PayID or bank transfer — no payment processing, no app download needed.
 
