@@ -28,6 +28,9 @@ export type Event = {
   notify_whatsapp_number: string | null
   notify_email: boolean
   notify_email_address: string | null
+  location: string | null
+  start_time: string | null
+  duration_minutes: number | null
 }
 
 export type Participant = {
@@ -38,4 +41,5 @@ export type Participant = {
   paid_at: string | null
   user_id: string | null
   added_by_name: string | null
+  custom_amount: number | null
 }

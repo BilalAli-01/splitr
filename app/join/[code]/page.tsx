@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useAuth } from '@/lib/auth-context'
 import { supabase, Event, Participant } from '@/lib/supabase'
-import { formatCurrency, formatDate, canLeave, LEAVE_RESTRICTION_LABELS } from '@/lib/utils'
+import { formatCurrency, formatDate, formatTime, formatDuration, canLeave, LEAVE_RESTRICTION_LABELS } from '@/lib/utils'
 import { ThemeToggle } from '@/components/ThemeToggle'
 
 export default function JoinPage() {
@@ -197,7 +197,16 @@ export default function JoinPage() {
               {isClosed && <span className="text-xs bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 font-semibold px-2.5 py-1 rounded-full shrink-0">Closed</span>}
             </div>
             {event.description && <p className="text-sm text-gray-500 dark:text-gray-400 mt-1.5">{event.description}</p>}
-            {event.event_date && <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{formatDate(event.event_date)}</p>}
+            {(event.event_date || event.start_time || event.duration_minutes) && (
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                {[
+                  event.event_date && formatDate(event.event_date),
+                  event.start_time && formatTime(event.start_time),
+                  event.duration_minutes && formatDuration(event.duration_minutes),
+                ].filter(Boolean).join(' · ')}
+              </p>
+            )}
+            {event.location && <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">📍 {event.location}</p>}
 
             {event.pricing_mode === 'flexible' && event.cost_per_person === 0 ? (
               <div className="mt-4 bg-purple-50 dark:bg-purple-900/20 rounded-xl p-4 flex items-center justify-between">
@@ -211,18 +220,23 @@ export default function JoinPage() {
                   <p className="text-sm font-semibold text-purple-700 dark:text-purple-300">{event.organiser_name}</p>
                 </div>
               </div>
-            ) : (
-              <div className="mt-4 bg-indigo-50 dark:bg-indigo-900/20 rounded-xl p-4 flex items-center justify-between">
-                <div>
-                  <p className="text-xs text-indigo-500 dark:text-indigo-400 font-medium">Your share</p>
-                  <p className="text-3xl font-bold text-indigo-700 dark:text-indigo-300 mt-0.5">{formatCurrency(event.cost_per_person)}</p>
+            ) : (() => {
+              const myTotal = myParticipants.length > 0
+                ? myParticipants.reduce((sum, p) => sum + (p.custom_amount ?? event.cost_per_person), 0)
+                : event.cost_per_person
+              return (
+                <div className="mt-4 bg-indigo-50 dark:bg-indigo-900/20 rounded-xl p-4 flex items-center justify-between">
+                  <div>
+                    <p className="text-xs text-indigo-500 dark:text-indigo-400 font-medium">Your share</p>
+                    <p className="text-3xl font-bold text-indigo-700 dark:text-indigo-300 mt-0.5">{formatCurrency(myTotal)}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs text-indigo-400 dark:text-indigo-500">Organised by</p>
+                    <p className="text-sm font-semibold text-indigo-700 dark:text-indigo-300">{event.organiser_name}</p>
+                  </div>
                 </div>
-                <div className="text-right">
-                  <p className="text-xs text-indigo-400 dark:text-indigo-500">Organised by</p>
-                  <p className="text-sm font-semibold text-indigo-700 dark:text-indigo-300">{event.organiser_name}</p>
-                </div>
-              </div>
-            )}
+              )
+            })()}
 
             <div className="mt-3 flex items-center justify-between text-xs text-gray-400 dark:text-gray-500">
               <span>{participantCount} of {event.max_participants} joined</span>
@@ -370,12 +384,18 @@ export default function JoinPage() {
                   </div>
 
                   <div className="p-5 space-y-3">
-                    <div className="flex items-center justify-between bg-gray-50 dark:bg-gray-700 rounded-xl px-4 py-3">
-                      <p className="text-xs text-gray-500 dark:text-gray-400">Amount{myParticipants.length > 1 ? ` (×${myParticipants.length})` : ''}</p>
-                      <p className="text-lg font-bold text-gray-900 dark:text-white">
-                        {formatCurrency(event.cost_per_person * myParticipants.length)}
-                      </p>
-                    </div>
+                    {(() => {
+                      const hasCustom = myParticipants.some(p => p.custom_amount !== null)
+                      const total = myParticipants.reduce((sum, p) => sum + (p.custom_amount ?? event.cost_per_person), 0)
+                      return (
+                        <div className="flex items-center justify-between bg-gray-50 dark:bg-gray-700 rounded-xl px-4 py-3">
+                          <p className="text-xs text-gray-500 dark:text-gray-400">
+                            {hasCustom ? 'Your total' : `Amount${myParticipants.length > 1 ? ` (×${myParticipants.length})` : ''}`}
+                          </p>
+                          <p className="text-lg font-bold text-gray-900 dark:text-white">{formatCurrency(total)}</p>
+                        </div>
+                      )
+                    })()}
 
                     <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800 rounded-xl px-4 py-3">
                       <p className="text-xs text-amber-800 dark:text-amber-300 font-medium">
@@ -426,7 +446,7 @@ export default function JoinPage() {
                     {/* Notify organiser */}
                     {(event.notify_whatsapp || event.notify_email) && (() => {
                       const names = myParticipants.map(p => p.name).join(' & ')
-                      const amount = formatCurrency(event.cost_per_person * myParticipants.length)
+                      const amount = formatCurrency(myParticipants.reduce((sum, p) => sum + (p.custom_amount ?? event.cost_per_person), 0))
                       const msg = `Hi ${event.organiser_name}, I've sent payment for ${event.name}. Name${myParticipants.length > 1 ? 's' : ''}: ${names}. Amount: ${amount}.`
                       return (
                         <div className="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden">

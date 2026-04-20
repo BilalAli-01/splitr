@@ -90,6 +90,9 @@ export default function EditEventPage() {
     const name = data.get('name') as string
     const description = data.get('description') as string
     const event_date = data.get('event_date') as string
+    const location = (data.get('location') as string) || null
+    const start_time = (data.get('start_time') as string) || null
+    const duration_minutes = data.get('duration_minutes') ? Number(data.get('duration_minutes')) : null
     const max_participants = Number(data.get('max_participants'))
     const organiser_name = data.get('organiser_name') as string
     const leave_restriction = data.get('leave_restriction') as string
@@ -120,6 +123,7 @@ export default function EditEventPage() {
 
     const { error: updateError } = await supabase.from('events').update({
       name, description: description || null, event_date: event_date || null,
+      location, start_time, duration_minutes,
       total_cost, max_participants, organiser_name, cost_per_person, payid, bsb,
       account_number, account_name, leave_restriction, pricing_mode: pricingMode,
       notify_whatsapp: enableWhatsApp, notify_whatsapp_number,
@@ -195,6 +199,22 @@ export default function EditEventPage() {
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5" htmlFor="event_date">Event date</label>
                 <input id="event_date" name="event_date" type="date" defaultValue={event.event_date ?? ''} className={inputClass} />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5" htmlFor="start_time">Start time</label>
+                  <input id="start_time" name="start_time" type="time" defaultValue={event.start_time?.slice(0, 5) ?? ''} className={inputClass} />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5" htmlFor="duration_minutes">Duration (mins)</label>
+                  <input id="duration_minutes" name="duration_minutes" type="number" min="1" step="1" placeholder="e.g. 90" defaultValue={event.duration_minutes ?? ''} className={inputClass} />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5" htmlFor="location">Location</label>
+                <input id="location" name="location" type="text" placeholder="e.g. Leichhardt Oval, Sydney" defaultValue={event.location ?? ''} className={inputClass} />
               </div>
 
               {/* Pricing mode selector */}

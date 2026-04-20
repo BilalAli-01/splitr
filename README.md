@@ -21,6 +21,9 @@ A mobile-first web app for splitting group event costs in Australia. Create an e
 
 ### For organisers
 - Dashboard to track paid/unpaid, mark payments, add or remove participants
+- Optional event details — location, start time, and duration
+- Set custom payment amounts per participant (overrides the default split)
+- Follow-up tool — compose a payment reminder with each person's name and amount outstanding, shareable via WhatsApp or copy-paste
 - Confirm cost for Flexible events directly from the dashboard without going to the edit form
 - Edit event details, payment methods, and pricing mode at any time
 - Configurable leave restrictions — lock headcounts before the event date

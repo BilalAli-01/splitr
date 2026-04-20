@@ -50,3 +50,20 @@ export const LEAVE_RESTRICTION_LABELS: Record<string, string> = {
   '7_days': 'Up to 7 days before',
   never: 'Never',
 }
+
+export function formatTime(timeStr: string | null): string {
+  if (!timeStr) return ''
+  const [h, m] = timeStr.split(':').map(Number)
+  const period = h >= 12 ? 'PM' : 'AM'
+  const hour = h % 12 || 12
+  return `${hour}:${String(m).padStart(2, '0')} ${period}`
+}
+
+export function formatDuration(minutes: number | null): string {
+  if (!minutes) return ''
+  const h = Math.floor(minutes / 60)
+  const m = minutes % 60
+  if (h === 0) return `${m}min`
+  if (m === 0) return `${h}h`
+  return `${h}h ${m}min`
+}

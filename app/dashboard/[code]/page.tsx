@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useAuth } from '@/lib/auth-context'
 import { supabase, Event, Participant } from '@/lib/supabase'
-import { formatCurrency, formatDate, LEAVE_RESTRICTION_LABELS } from '@/lib/utils'
+import { formatCurrency, formatDate, formatTime, formatDuration, LEAVE_RESTRICTION_LABELS } from '@/lib/utils'
 import { ThemeToggle } from '@/components/ThemeToggle'
 
 export default function DashboardPage() {
@@ -35,6 +35,15 @@ export default function DashboardPage() {
   // Flexible cost confirmation
   const [confirmCostAmount, setConfirmCostAmount] = useState('')
   const [confirmingCost, setConfirmingCost] = useState(false)
+
+  // Chase unpaid
+  const [showChase, setShowChase] = useState(false)
+  const [chaseCopied, setChaseCopied] = useState(false)
+
+  // Custom amounts
+  const [editingAmount, setEditingAmount] = useState<string | null>(null)
+  const [editAmountValue, setEditAmountValue] = useState('')
+  const [savingAmount, setSavingAmount] = useState(false)
 
   // Legacy PIN gate
   const [authed, setAuthed] = useState(false)
@@ -202,6 +211,41 @@ export default function DashboardPage() {
     setTimeout(() => setCopied(false), 2000)
   }
 
+  async function saveCustomAmount(participantId: string) {
+    const amount = editAmountValue === '' ? null : Number(editAmountValue)
+    setSavingAmount(true)
+    await supabase.from('participants').update({ custom_amount: amount }).eq('id', participantId)
+    setParticipants(prev => prev.map(p => p.id === participantId ? { ...p, custom_amount: amount } : p))
+    setEditingAmount(null)
+    setEditAmountValue('')
+    setSavingAmount(false)
+  }
+
+  function buildChaseMessage() {
+    if (!event) return ''
+    const unpaid = participants.filter(p => !p.paid)
+    const lines: string[] = [
+      `Hi! Just a reminder that payment is still outstanding for ${event.name}.`,
+      ``,
+      `Outstanding:`,
+      ...unpaid.map(p => {
+        const amt = p.custom_amount ?? event.cost_per_person
+        return amt > 0 ? `  • ${p.name} — ${formatCurrency(amt)}` : `  • ${p.name}`
+      }),
+    ]
+    lines.push(``)
+    if (event.payid) lines.push(`PayID: ${event.payid}`)
+    if (event.bsb) lines.push(`Bank transfer: ${event.account_name}, BSB ${event.bsb}, Acct ${event.account_number}`)
+    lines.push(``, `Thanks!`)
+    return lines.join('\n')
+  }
+
+  function copyChaseMessage() {
+    navigator.clipboard.writeText(buildChaseMessage())
+    setChaseCopied(true)
+    setTimeout(() => setChaseCopied(false), 2000)
+  }
+
   if (authLoading || loading) {
     return <div className="min-h-screen flex items-center justify-center"><div className="text-gray-400 text-sm">Loading…</div></div>
   }
@@ -284,7 +328,7 @@ export default function DashboardPage() {
   const hasJoinedAsParticipant = participants.some(p => p.user_id === user?.id)
   const paidCount = participants.filter(p => p.paid).length
   const unpaidCount = participants.filter(p => !p.paid).length
-  const paidTotal = paidCount * event.cost_per_person
+  const paidTotal = participants.filter(p => p.paid).reduce((sum, p) => sum + (p.custom_amount ?? event.cost_per_person), 0)
   const spotsLeft = event.max_participants - participants.length
   const isClosed = event.status === 'closed'
 
@@ -347,7 +391,16 @@ export default function DashboardPage() {
               )}
             </div>
             {event.description && <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{event.description}</p>}
-            {event.event_date && <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{formatDate(event.event_date)}</p>}
+            {(event.event_date || event.start_time || event.duration_minutes) && (
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                {[
+                  event.event_date && formatDate(event.event_date),
+                  event.start_time && formatTime(event.start_time),
+                  event.duration_minutes && formatDuration(event.duration_minutes),
+                ].filter(Boolean).join(' · ')}
+              </p>
+            )}
+            {event.location && <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">📍 {event.location}</p>}
 
             <div className="mt-4 grid grid-cols-2 gap-3">
               <div className="bg-indigo-50 dark:bg-indigo-900/20 rounded-xl p-3">
@@ -470,6 +523,47 @@ export default function DashboardPage() {
             </div>
           )}
 
+          {/* Chase unpaid */}
+          {!isClosed && unpaidCount > 0 && (
+            <div className="bg-white dark:bg-gray-800 rounded-2xl border border-amber-200 dark:border-amber-800 shadow-sm overflow-hidden">
+              <div className="px-5 py-4 flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wider text-amber-500">Follow up</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-0.5">{unpaidCount} unpaid participant{unpaidCount !== 1 ? 's' : ''}</p>
+                </div>
+                <button
+                  onClick={() => setShowChase(v => !v)}
+                  className="shrink-0 text-xs font-semibold px-3 py-1.5 rounded-lg bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/30 transition-colors"
+                >
+                  {showChase ? 'Hide' : 'Compose reminder'}
+                </button>
+              </div>
+              {showChase && (
+                <div className="px-5 pb-5 border-t border-amber-100 dark:border-amber-800/50 pt-4 space-y-3">
+                  <pre className="text-xs text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-700 rounded-xl p-4 whitespace-pre-wrap font-sans leading-relaxed">
+                    {buildChaseMessage()}
+                  </pre>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={copyChaseMessage}
+                      className="flex-1 text-xs font-semibold py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                    >
+                      {chaseCopied ? 'Copied!' : 'Copy message'}
+                    </button>
+                    <a
+                      href={`https://wa.me/?text=${encodeURIComponent(buildChaseMessage())}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex-1 text-xs font-semibold py-2 rounded-lg bg-green-500 text-white hover:bg-green-600 transition-colors text-center"
+                    >
+                      Share via WhatsApp
+                    </a>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Participants */}
           <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
             <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between gap-3">
@@ -523,7 +617,14 @@ export default function DashboardPage() {
                           {p.name.charAt(0).toUpperCase()}
                         </div>
                         <div className="min-w-0">
-                          <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{p.name}</p>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{p.name}</p>
+                            {p.custom_amount !== null && (
+                              <span className="text-xs bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 px-1.5 py-0.5 rounded-md font-semibold shrink-0">
+                                {formatCurrency(p.custom_amount)}
+                              </span>
+                            )}
+                          </div>
                           {p.paid && p.paid_at
                             ? <p className="text-xs text-green-600 dark:text-green-400">Paid {new Date(p.paid_at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}</p>
                             : <p className="text-xs text-amber-600 dark:text-amber-400">Awaiting payment</p>
@@ -572,6 +673,47 @@ export default function DashboardPage() {
                         </div>
                       )}
                     </div>
+
+                    {/* Inline custom amount editor */}
+                    {!isClosed && (
+                      editingAmount === p.id ? (
+                        <div className="mt-2 flex items-center gap-2">
+                          <div className="relative flex-1">
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs">$</span>
+                            <input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              value={editAmountValue}
+                              onChange={e => setEditAmountValue(e.target.value)}
+                              placeholder={String(event.cost_per_person || '0.00')}
+                              autoFocus
+                              className="w-full pl-6 pr-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-gray-700 dark:text-white"
+                            />
+                          </div>
+                          <button
+                            onClick={() => saveCustomAmount(p.id)}
+                            disabled={savingAmount}
+                            className="text-xs font-semibold px-2.5 py-1.5 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition-colors disabled:opacity-50"
+                          >
+                            {savingAmount ? '…' : 'Save'}
+                          </button>
+                          <button
+                            onClick={() => { setEditingAmount(null); setEditAmountValue('') }}
+                            className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 px-1"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => { setEditingAmount(p.id); setEditAmountValue(p.custom_amount !== null ? String(p.custom_amount) : '') }}
+                          className="mt-1.5 text-xs text-indigo-500 dark:text-indigo-400 hover:underline"
+                        >
+                          {p.custom_amount !== null ? 'Edit amount' : 'Set custom amount'}
+                        </button>
+                      )
+                    )}
                   </li>
                 ))}
               </ul>
