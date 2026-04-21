@@ -332,6 +332,17 @@ export default function DashboardPage() {
   const spotsLeft = event.max_participants - participants.length
   const isClosed = event.status === 'closed'
 
+  const hasCustomAmounts = participants.some(p => p.custom_amount !== null)
+  const effectiveTotalCost = hasCustomAmounts && participants.length > 0
+    ? participants.reduce((sum, p) => sum + (p.custom_amount ?? event.cost_per_person), 0)
+    : event.total_cost
+  const participantAmounts = participants.map(p => p.custom_amount ?? event.cost_per_person)
+  const allSameAmount = participantAmounts.length > 0 && participantAmounts.every(a => a === participantAmounts[0])
+  // null means amounts vary — display as "Custom"
+  const effectiveCostPerPerson: number | null = hasCustomAmounts
+    ? (allSameAmount ? participantAmounts[0] : null)
+    : event.cost_per_person
+
   return (
     <div className="min-h-screen flex flex-col">
       <header className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 px-4 py-4 sticky top-0 z-10">
@@ -405,16 +416,18 @@ export default function DashboardPage() {
             <div className="mt-4 grid grid-cols-2 gap-3">
               <div className="bg-indigo-50 dark:bg-indigo-900/20 rounded-xl p-3">
                 <p className="text-xs text-indigo-500 dark:text-indigo-400 font-medium">Cost per person</p>
-                {event.pricing_mode === 'flexible' && event.cost_per_person === 0
-                  ? <p className="text-sm font-bold text-purple-600 dark:text-purple-400 mt-0.5">To be confirmed</p>
-                  : <p className="text-xl font-bold text-indigo-700 dark:text-indigo-300 mt-0.5">{formatCurrency(event.cost_per_person)}</p>
+                {effectiveCostPerPerson === null
+                  ? <p className="text-sm font-bold text-indigo-500 dark:text-indigo-400 mt-0.5">Custom</p>
+                  : event.pricing_mode === 'flexible' && effectiveCostPerPerson === 0
+                    ? <p className="text-sm font-bold text-purple-600 dark:text-purple-400 mt-0.5">To be confirmed</p>
+                    : <p className="text-xl font-bold text-indigo-700 dark:text-indigo-300 mt-0.5">{formatCurrency(effectiveCostPerPerson)}</p>
                 }
               </div>
               <div className="bg-gray-50 dark:bg-gray-700 rounded-xl p-3">
                 <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">Total cost</p>
-                {event.pricing_mode === 'flexible' && event.total_cost === 0
+                {event.pricing_mode === 'flexible' && effectiveTotalCost === 0
                   ? <p className="text-sm font-bold text-gray-500 dark:text-gray-400 mt-0.5">TBC</p>
-                  : <p className="text-xl font-bold text-gray-700 dark:text-gray-200 mt-0.5">{formatCurrency(event.total_cost)}</p>
+                  : <p className="text-xl font-bold text-gray-700 dark:text-gray-200 mt-0.5">{formatCurrency(effectiveTotalCost)}</p>
                 }
               </div>
             </div>
@@ -720,8 +733,8 @@ export default function DashboardPage() {
             )}
           </div>
 
-          {/* Confirm cost — Flexible mode only */}
-          {!isClosed && event.pricing_mode === 'flexible' && event.cost_per_person === 0 && (
+          {/* Confirm cost — Flexible mode only, hidden once all participants have custom amounts */}
+          {!isClosed && event.pricing_mode === 'flexible' && event.cost_per_person === 0 && !hasCustomAmounts && (
             <div className="bg-white dark:bg-gray-800 rounded-2xl border border-purple-200 dark:border-purple-800 shadow-sm p-5">
               <p className="text-xs font-semibold uppercase tracking-wider text-purple-400 mb-1">Confirm cost</p>
               <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
