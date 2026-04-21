@@ -23,8 +23,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter()
 
   useEffect(() => {
-    // Handle expired/invalid token links (e.g. #error=access_denied)
     const hash = window.location.hash
+
+    // Handle expired/invalid token links (e.g. #error=access_denied)
     if (hash.includes('error=access_denied') || hash.includes('error_code=otp_expired')) {
       sessionStorage.removeItem('recovery_pending')
       supabase.auth.signOut().then(() => {
@@ -33,21 +34,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return
     }
 
-    supabase.auth.getSession().then(({ data: { session }, error }) => {
-      if (error) {
-        supabase.auth.signOut()
-        setUser(null)
-      } else if (sessionStorage.getItem('recovery_pending') === 'true' && session) {
-        router.push('/auth/update-password')
-      } else {
-        setUser(session?.user ?? null)
-      }
-      setLoading(false)
-    })
+    // If a recovery token is in the URL, keep loading until PASSWORD_RECOVERY fires
+    // so the home page doesn't redirect to login before the event is processed
+    const hasRecoveryToken = hash.includes('type=recovery')
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'PASSWORD_RECOVERY') {
         sessionStorage.setItem('recovery_pending', 'true')
+        setLoading(false)
         router.push('/auth/update-password')
         return
       }
@@ -57,6 +51,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
       setUser(session?.user ?? null)
     })
+
+    if (!hasRecoveryToken) {
+      supabase.auth.getSession().then(({ data: { session }, error }) => {
+        if (error) {
+          supabase.auth.signOut()
+          setUser(null)
+        } else if (sessionStorage.getItem('recovery_pending') === 'true' && session) {
+          router.push('/auth/update-password')
+        } else {
+          setUser(session?.user ?? null)
+        }
+        setLoading(false)
+      })
+    }
 
     return () => subscription.unsubscribe()
   }, [])
