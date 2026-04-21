@@ -65,8 +65,18 @@ export default function HomePage() {
   const uniqueJoined = joinedEvents.filter(
     (p, i, arr) => arr.findIndex(x => x.events?.id === p.events?.id) === i
   )
-  const activeJoined = uniqueJoined.filter(p => p.events?.status !== 'closed')
-  const closedJoined = uniqueJoined.filter(p => p.events?.status === 'closed')
+
+  const sortByEventDate = (a: Participation, b: Participation) => {
+    const dateA = a.events?.event_date
+    const dateB = b.events?.event_date
+    if (!dateA && !dateB) return 0
+    if (!dateA) return 1
+    if (!dateB) return -1
+    return dateA < dateB ? -1 : dateA > dateB ? 1 : 0
+  }
+
+  const activeJoined = uniqueJoined.filter(p => p.events?.status !== 'closed').sort(sortByEventDate)
+  const closedJoined = uniqueJoined.filter(p => p.events?.status === 'closed').sort(sortByEventDate)
 
   const hasAnything =
     organisedEvents.length > 0 || joinedEvents.length > 0
