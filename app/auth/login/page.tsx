@@ -11,7 +11,7 @@ function LoginForm() {
   const searchParams = useSearchParams()
   const next = searchParams.get('next') ?? '/'
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
+  const [error, setError] = useState(searchParams.get('error') === 'link_expired' ? 'This password reset link has expired. Please request a new one.' : '')
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()

@@ -23,10 +23,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter()
 
   useEffect(() => {
+    // Handle expired/invalid token links (e.g. #error=access_denied)
+    const hash = window.location.hash
+    if (hash.includes('error=access_denied') || hash.includes('error_code=otp_expired')) {
+      sessionStorage.removeItem('recovery_pending')
+      supabase.auth.signOut().then(() => {
+        router.replace('/auth/login?error=link_expired')
+      })
+      return
+    }
+
     supabase.auth.getSession().then(({ data: { session }, error }) => {
       if (error) {
         supabase.auth.signOut()
         setUser(null)
+      } else if (sessionStorage.getItem('recovery_pending') === 'true' && session) {
+        router.push('/auth/update-password')
       } else {
         setUser(session?.user ?? null)
       }
