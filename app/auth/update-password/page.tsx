@@ -40,6 +40,7 @@ export default function UpdatePasswordPage() {
       return
     }
 
+    sessionStorage.removeItem('recovery_pending')
     router.push('/')
   }
 

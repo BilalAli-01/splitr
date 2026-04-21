@@ -35,6 +35,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'PASSWORD_RECOVERY') {
+        sessionStorage.setItem('recovery_pending', 'true')
+        router.push('/auth/update-password')
+        return
+      }
+      if (sessionStorage.getItem('recovery_pending') === 'true') {
         router.push('/auth/update-password')
         return
       }
