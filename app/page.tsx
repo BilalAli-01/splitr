@@ -15,10 +15,12 @@ type Participation = {
   events: Event
 }
 
+type EventWithAmounts = Event & { participants: { custom_amount: number | null }[] }
+
 export default function HomePage() {
   const { user, loading: authLoading, signOut } = useAuth()
   const router = useRouter()
-  const [organisedEvents, setOrganisedEvents] = useState<Event[]>([])
+  const [organisedEvents, setOrganisedEvents] = useState<EventWithAmounts[]>([])
   const [joinedEvents, setJoinedEvents] = useState<Participation[]>([])
   const [dataLoading, setDataLoading] = useState(true)
 
@@ -32,7 +34,7 @@ export default function HomePage() {
       const [{ data: organised }, { data: joined }] = await Promise.all([
         supabase
           .from('events')
-          .select('*')
+          .select('*, participants(custom_amount)')
           .eq('organiser_user_id', user!.id)
           .order('event_date', { ascending: true, nullsFirst: false }),
         supabase
@@ -40,7 +42,7 @@ export default function HomePage() {
           .select('id, name, paid, events(*)')
           .eq('user_id', user!.id),
       ])
-      setOrganisedEvents(organised ?? [])
+      setOrganisedEvents((organised as unknown as EventWithAmounts[]) ?? [])
       setJoinedEvents((joined as unknown as Participation[]) ?? [])
       setDataLoading(false)
     }
@@ -150,7 +152,9 @@ export default function HomePage() {
                       <div className="text-right shrink-0">
                         {event.pricing_mode === 'flexible' && event.cost_per_person === 0
                           ? <p className="font-bold text-purple-600 dark:text-purple-400">Flexible</p>
-                          : <p className="font-bold text-indigo-600">{formatCurrency(event.cost_per_person)}</p>
+                          : event.participants?.some(p => p.custom_amount !== null)
+                            ? <p className="font-bold text-indigo-600">Custom</p>
+                            : <p className="font-bold text-indigo-600">{formatCurrency(event.cost_per_person)}</p>
                         }
                         <p className="text-xs text-gray-400">per person</p>
                       </div>
@@ -176,7 +180,9 @@ export default function HomePage() {
                       <div className="text-right shrink-0">
                         {event.pricing_mode === 'flexible' && event.cost_per_person === 0
                           ? <p className="font-bold text-gray-500 dark:text-gray-400">Flexible</p>
-                          : <p className="font-bold text-gray-500 dark:text-gray-400">{formatCurrency(event.cost_per_person)}</p>
+                          : event.participants?.some(p => p.custom_amount !== null)
+                            ? <p className="font-bold text-gray-500 dark:text-gray-400">Custom</p>
+                            : <p className="font-bold text-gray-500 dark:text-gray-400">{formatCurrency(event.cost_per_person)}</p>
                         }
                         <p className="text-xs text-gray-400">per person</p>
                       </div>

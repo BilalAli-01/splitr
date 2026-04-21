@@ -632,9 +632,9 @@ export default function DashboardPage() {
                         <div className="min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
                             <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{p.name}</p>
-                            {p.custom_amount !== null && (
-                              <span className="text-xs bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 px-1.5 py-0.5 rounded-md font-semibold shrink-0">
-                                {formatCurrency(p.custom_amount)}
+                            {hasCustomAmounts && (
+                              <span className={`text-xs px-1.5 py-0.5 rounded-md font-semibold shrink-0 ${p.custom_amount !== null ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300' : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400'}`}>
+                                {formatCurrency(p.custom_amount ?? event.cost_per_person)}
                               </span>
                             )}
                           </div>

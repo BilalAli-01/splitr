@@ -208,19 +208,22 @@ export default function JoinPage() {
             )}
             {event.location && <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">📍 {event.location}</p>}
 
-            {event.pricing_mode === 'flexible' && event.cost_per_person === 0 ? (
-              <div className="mt-4 bg-purple-50 dark:bg-purple-900/20 rounded-xl p-4 flex items-center justify-between">
-                <div>
-                  <p className="text-xs text-purple-500 dark:text-purple-400 font-medium">Your share</p>
-                  <p className="text-base font-bold text-purple-700 dark:text-purple-300 mt-0.5">To be confirmed</p>
-                  <p className="text-xs text-purple-500 dark:text-purple-400 mt-0.5">The organiser will set this after the event</p>
+            {(() => {
+              const myHasCustomAmount = myParticipants.some(p => p.custom_amount !== null)
+              const costConfirmed = event.cost_per_person > 0 || myHasCustomAmount
+              if (event.pricing_mode === 'flexible' && !costConfirmed) return (
+                <div className="mt-4 bg-purple-50 dark:bg-purple-900/20 rounded-xl p-4 flex items-center justify-between">
+                  <div>
+                    <p className="text-xs text-purple-500 dark:text-purple-400 font-medium">Your share</p>
+                    <p className="text-base font-bold text-purple-700 dark:text-purple-300 mt-0.5">To be confirmed</p>
+                    <p className="text-xs text-purple-500 dark:text-purple-400 mt-0.5">The organiser will set this after the event</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs text-purple-400 dark:text-purple-500">Organised by</p>
+                    <p className="text-sm font-semibold text-purple-700 dark:text-purple-300">{event.organiser_name}</p>
+                  </div>
                 </div>
-                <div className="text-right">
-                  <p className="text-xs text-purple-400 dark:text-purple-500">Organised by</p>
-                  <p className="text-sm font-semibold text-purple-700 dark:text-purple-300">{event.organiser_name}</p>
-                </div>
-              </div>
-            ) : (() => {
+              )
               const myTotal = myParticipants.length > 0
                 ? myParticipants.reduce((sum, p) => sum + (p.custom_amount ?? event.cost_per_person), 0)
                 : event.cost_per_person
@@ -354,7 +357,7 @@ export default function JoinPage() {
               </div>
 
               {/* Flexible pending notice */}
-              {!isClosed && event.pricing_mode === 'flexible' && event.cost_per_person === 0 && (
+              {!isClosed && event.pricing_mode === 'flexible' && event.cost_per_person === 0 && !myParticipants.some(p => p.custom_amount !== null) && (
                 <div className="bg-purple-50 dark:bg-purple-900/20 rounded-2xl border border-purple-100 dark:border-purple-800 p-5 flex items-start gap-3">
                   <span className="text-xl shrink-0">⏳</span>
                   <div>
@@ -367,7 +370,7 @@ export default function JoinPage() {
               )}
 
               {/* Payment details */}
-              {!isClosed && !(event.pricing_mode === 'flexible' && event.cost_per_person === 0) && (
+              {!isClosed && !(event.pricing_mode === 'flexible' && event.cost_per_person === 0 && !myParticipants.some(p => p.custom_amount !== null)) && (
                 <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
                   <div className="bg-green-50 dark:bg-green-900/20 border-b border-green-100 dark:border-green-800 px-5 py-4 flex items-center gap-3">
                     <div className="w-9 h-9 rounded-full bg-green-500 flex items-center justify-center shrink-0">
