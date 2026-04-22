@@ -333,15 +333,22 @@ export default function DashboardPage() {
   const isClosed = event.status === 'closed'
 
   const hasCustomAmounts = participants.some(p => p.custom_amount !== null)
-  const effectiveTotalCost = hasCustomAmounts && participants.length > 0
-    ? participants.reduce((sum, p) => sum + (p.custom_amount ?? event.cost_per_person), 0)
-    : event.total_cost
+  // Split: total is the fixed anchor — never overridden by custom amounts
+  // Fixed: cost per person is the fixed anchor — never overridden
+  // Flexible: both values derive from custom amounts
+  const effectiveTotalCost = (event.pricing_mode === 'split' || event.pricing_mode === 'fixed')
+    ? event.total_cost
+    : hasCustomAmounts && participants.length > 0
+      ? participants.reduce((sum, p) => sum + (p.custom_amount ?? event.cost_per_person), 0)
+      : event.total_cost
   const participantAmounts = participants.map(p => p.custom_amount ?? event.cost_per_person)
   const allSameAmount = participantAmounts.length > 0 && participantAmounts.every(a => a === participantAmounts[0])
-  // null means amounts vary — display as "Custom"
-  const effectiveCostPerPerson: number | null = hasCustomAmounts
-    ? (allSameAmount ? participantAmounts[0] : null)
-    : event.cost_per_person
+  // Fixed: always show the fixed per-person rate; null = "Custom" for split/flexible when amounts vary
+  const effectiveCostPerPerson: number | null = event.pricing_mode === 'fixed'
+    ? event.cost_per_person
+    : hasCustomAmounts
+      ? (allSameAmount ? participantAmounts[0] : null)
+      : event.cost_per_person
 
   return (
     <div className="min-h-screen flex flex-col">

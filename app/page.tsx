@@ -152,7 +152,7 @@ export default function HomePage() {
                       <div className="text-right shrink-0">
                         {event.pricing_mode === 'flexible' && event.cost_per_person === 0
                           ? <p className="font-bold text-purple-600 dark:text-purple-400">Flexible</p>
-                          : event.participants?.some(p => p.custom_amount !== null)
+                          : event.pricing_mode !== 'fixed' && event.participants?.some(p => p.custom_amount !== null)
                             ? <p className="font-bold text-indigo-600">Custom</p>
                             : <p className="font-bold text-indigo-600">{formatCurrency(event.cost_per_person)}</p>
                         }
@@ -180,7 +180,7 @@ export default function HomePage() {
                       <div className="text-right shrink-0">
                         {event.pricing_mode === 'flexible' && event.cost_per_person === 0
                           ? <p className="font-bold text-gray-500 dark:text-gray-400">Flexible</p>
-                          : event.participants?.some(p => p.custom_amount !== null)
+                          : event.pricing_mode !== 'fixed' && event.participants?.some(p => p.custom_amount !== null)
                             ? <p className="font-bold text-gray-500 dark:text-gray-400">Custom</p>
                             : <p className="font-bold text-gray-500 dark:text-gray-400">{formatCurrency(event.cost_per_person)}</p>
                         }
